@@ -5,12 +5,10 @@
 //     values are hardcoded below.
 //   - the final "portfolio homepage" mockup is replaced with a plain white
 //     reveal, per spec: intro plays once, then the site is a white page.
-//   - assets/poster.png (a large photo, unavailable to port) is replaced
-//     with a procedural framed-art placeholder of the same size/position.
-//   - assets/hand-right.png (also unavailable) is the hand-left.png cutout
-//     mirrored via CSS — same cutout, opposite hand.
 import { useComposition, Shot, Easing, animate, clamp } from './engine';
-import handPhoto from './assets/hand-left.png';
+import handLeft from './assets/hand-left.png';
+import handRight from './assets/hand-right.png';
+import poster from './assets/poster.png';
 
 const W = 1920, H = 1080;
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
@@ -169,17 +167,12 @@ function Window({ T }) {
   );
 }
 
-// Framed-art placeholder in place of the original photo (assets/poster.png).
 function Poster() {
   return (
     <div style={{ position: 'absolute', left: 1508, top: 96, width: 300, height: 508, zIndex: 1 }}>
       <div style={{ position: 'absolute', left: 12, top: 16, right: -14, bottom: -18, background: 'rgba(0,0,0,.6)', filter: 'blur(20px)' }} />
       <div style={{ position: 'absolute', inset: 0, padding: 9, background: 'linear-gradient(160deg,#2a2a28,#141412)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.14)' }}>
-        <div style={{
-          width: '100%', height: '100%',
-          background: 'linear-gradient(165deg, #2c4a3a 0%, #16281f 42%, #0c1712 78%, #060b09 100%)',
-          filter: 'brightness(.72) saturate(.9) contrast(1.05)',
-        }} />
+        <img src={poster} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'brightness(.55) saturate(.9) contrast(1.05)' }} />
       </div>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(200deg, rgba(190,220,240,.10), rgba(0,0,0,0) 46%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(92,244,154,.07), rgba(92,244,154,0) 60%)', mixBlendMode: 'screen', pointerEvents: 'none' }} />
@@ -206,15 +199,13 @@ function Monitor({ opacity, glow }) {
   );
 }
 
-// Uploaded hand cutout, lit for the room. `mirror` flips the same left-hand
-// cutout to stand in for the right hand (assets/hand-right.png unavailable).
-function HandPhoto({ style, transform, mirror }) {
-  const flip = mirror ? 'scaleX(-1)' : 'none';
+// Uploaded hand cutout, lit for the room.
+function HandPhoto({ src, style, transform }) {
   return (
     <div style={{ position: 'absolute', ...style, transform, transformOrigin: 'bottom center' }}>
       <div style={{ position: 'absolute', left: '12%', top: '4%', width: '76%', height: '30%', borderRadius: '50%', background: 'rgba(0,0,0,.45)', filter: 'blur(14px)' }} />
-      <img src={handPhoto} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', transform: flip, filter: 'brightness(.8) saturate(.95) contrast(1.04)' }} />
-      <img src={handPhoto} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', transform: flip, opacity: 0.16, mixBlendMode: 'screen', filter: 'brightness(.45) sepia(1) hue-rotate(68deg) saturate(2.4)' }} />
+      <img src={src} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(.8) saturate(.95) contrast(1.04)' }} />
+      <img src={src} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', opacity: 0.16, mixBlendMode: 'screen', filter: 'brightness(.45) sepia(1) hue-rotate(68deg) saturate(2.4)' }} />
     </div>
   );
 }
@@ -387,10 +378,10 @@ function Piece() {
             transform: `scale(${0.35 + ring * 1.25})`, pointerEvents: 'none',
           }} />
         )}
-        <HandPhoto
+        <HandPhoto src={handLeft}
           style={{ left: 404, top: 884, width: 446, height: 346, zIndex: 9 }}
           transform={`translateY(${taps[1] * 13}px) rotate(-6deg)`} />
-        <HandPhoto mirror
+        <HandPhoto src={handRight}
           style={{ left: 1046, top: 884, width: 446, height: 346, zIndex: 9 }}
           transform={`translate(${reach * 300}px, ${taps[0] * 13 + press * 30}px) rotate(4deg)`} />
       </div>
