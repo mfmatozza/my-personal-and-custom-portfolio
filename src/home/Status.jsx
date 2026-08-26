@@ -9,7 +9,7 @@ const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
 
 const CMD = '$ cat status.txt';
-const OCCUPATION = "Economics & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
+const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
 
 const EDUCATION = [
   {
