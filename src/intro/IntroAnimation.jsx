@@ -334,7 +334,10 @@ function Piece() {
 
   const bezelOut = clamp(1 - (T - (CUES.Punch + 0.12)) / 0.4, 0, 1);
   const flash = clamp(1 - Math.abs(T - (CUES.Punch + 0.72)) / 0.18, 0, 1);
-  const whiteOp = clamp((T - (CUES.Punch + 0.6)) / 0.34, 0, 1);
+  // Covers the punch-zoomed scene with flat dark so the cut to the (dark) Hero
+  // page underneath, once the intro unmounts, is seamless rather than a
+  // white flash-to-black.
+  const revealOp = clamp((T - (CUES.Punch + 0.6)) / 0.34, 0, 1);
   const gl = TWEAKS.glowLevel;
 
   return (
@@ -390,7 +393,7 @@ function Piece() {
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(70% 65% at 50% 46%, rgba(0,0,0,0) 40%, rgba(0,0,0,.62) 100%)' }} />
       <div style={{ position: 'absolute', inset: 0, background: '#eafff2', opacity: flash * 0.85, pointerEvents: 'none' }} />
       <Shot from={CUES.Punch + 0.5} to={Infinity}>
-        <div style={{ position: 'absolute', inset: 0, background: '#ffffff', opacity: whiteOp }} />
+        <div style={{ position: 'absolute', inset: 0, background: '#07080a', opacity: revealOp }} />
       </Shot>
       <div style={{
         position: 'absolute', right: 46, bottom: 38, fontFamily: MONO, fontSize: 19, letterSpacing: '0.18em',
