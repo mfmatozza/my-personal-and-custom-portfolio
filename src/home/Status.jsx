@@ -8,6 +8,16 @@
 import { useEffect, useState } from 'react';
 import { useTypewriter } from './useTypewriter';
 import { useInView } from './useInView';
+import logoBocconi from './assets/logos/bocconi.png';
+import logoInstitut from './assets/logos/institut.png';
+import logoVivaticket from './assets/logos/vivaticket.png';
+import logoGeneve from './assets/logos/geneve.png';
+import logoCern from './assets/logos/cern.png';
+import logoMsc from './assets/logos/msc.png';
+import logoPg from './assets/logos/pg.png';
+import logoAstra from './assets/logos/astra.png';
+import logoLovable from './assets/logos/lovable.png';
+import logoHacklab from './assets/logos/hacklab.png';
 
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
@@ -19,7 +29,7 @@ const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket
 // add badges as exact substrings alongside the full bullet, never in place of it.
 const EDUCATION = [
   {
-    key: 'bocconi', org: 'Bocconi University', period: 'Aug 2024 - Jun 2027', location: 'Milan, Italy',
+    key: 'bocconi', org: 'Bocconi University', logo: logoBocconi, period: 'Aug 2024 - Jun 2027', location: 'Milan, Italy',
     roles: [{
       title: 'Bachelor in Economics, Management and Computer Science',
       bullets: ['Course Representative, Statistics: 31/30, Computer Science: 29/30, IT Law: 30/30'],
@@ -27,7 +37,7 @@ const EDUCATION = [
     }],
   },
   {
-    key: 'lancy-ib', org: 'Institut International de Lancy', period: '2022 - 2024', location: 'Geneva, Switzerland',
+    key: 'lancy-ib', org: 'Institut International de Lancy', logo: logoInstitut, period: '2022 - 2024', location: 'Geneva, Switzerland',
     roles: [{
       title: 'International Baccalaureat',
       bullets: ['Physics, Mathematics, Business Management, Chemistry, Italian Literature, English Literature'],
@@ -37,7 +47,7 @@ const EDUCATION = [
 
 const EXPERIENCE = [
   {
-    key: 'vivaticket', org: 'VivaTicket', defaultOpen: true,
+    key: 'vivaticket', org: 'VivaTicket', logo: logoVivaticket, defaultOpen: true,
     period: '2026 - Present', location: 'Milan, Italy',
     roles: [{
       title: 'Software Engineer Intern',
@@ -49,7 +59,7 @@ const EXPERIENCE = [
     }],
   },
   {
-    key: 'geneve', org: 'Ville de Genève', period: 'July 2025 - August 2025', location: 'Geneva, Switzerland',
+    key: 'geneve', org: 'Ville de Genève', logo: logoGeneve, period: 'July 2025 - August 2025', location: 'Geneva, Switzerland',
     roles: [{
       title: 'Intern at Service des Relations Extérieures',
       bullets: [
@@ -60,7 +70,7 @@ const EXPERIENCE = [
     }],
   },
   {
-    key: 'cern', org: 'CERN', period: 'July 2023 - July 2023', location: 'Geneva, Switzerland',
+    key: 'cern', org: 'CERN', logo: logoCern, period: 'July 2023 - July 2023', location: 'Geneva, Switzerland',
     roles: [{
       title: 'Shadow Program',
       bullets: [
@@ -71,7 +81,7 @@ const EXPERIENCE = [
     }],
   },
   {
-    key: 'msc', org: 'Mediterranean Shipping Company (MSC)', period: 'June 2023 - June 2023', location: 'Geneva, Switzerland',
+    key: 'msc', org: 'Mediterranean Shipping Company (MSC)', logo: logoMsc, period: 'June 2023 - June 2023', location: 'Geneva, Switzerland',
     roles: [{
       title: 'Intern',
       bullets: [
@@ -82,7 +92,7 @@ const EXPERIENCE = [
     }],
   },
   {
-    key: 'pg', org: 'Procter & Gamble', period: 'June 2022 - June 2022', location: 'Geneva, Switzerland',
+    key: 'pg', org: 'Procter & Gamble', logo: logoPg, period: 'June 2022 - June 2022', location: 'Geneva, Switzerland',
     roles: [{
       title: 'Shadow Program',
       bullets: [
@@ -93,7 +103,7 @@ const EXPERIENCE = [
     }],
   },
   {
-    key: 'lancy-basketball', org: 'Institut International de Lancy', period: 'September 2022 - April 2024', location: 'Geneva, Switzerland',
+    key: 'lancy-basketball', org: 'Institut International de Lancy', logo: logoInstitut, period: 'September 2022 - April 2024', location: 'Geneva, Switzerland',
     roles: [{
       title: 'Basketball Coach',
       bullets: ['Worked with children aged 8-16', 'Developed adaptive communication skills'],
@@ -103,7 +113,7 @@ const EXPERIENCE = [
 
 const EXTRACURRICULARS = [
   {
-    key: 'astra', org: 'Astra Bocconi', period: 'Oct 2024 - Present',
+    key: 'astra', org: 'Astra Bocconi', logo: logoAstra, period: 'Oct 2024 - Present',
     roles: [
       {
         title: 'Head of Technology', period: 'Aug 2025 - Present',
@@ -117,14 +127,14 @@ const EXTRACURRICULARS = [
     ],
   },
   {
-    key: 'lovable', org: 'Lovable', period: 'Jan 2025 - Jul 2026',
+    key: 'lovable', org: 'Lovable', logo: logoLovable, period: 'Jan 2025 - Jul 2026',
     roles: [{
       title: 'Lovable Campus Leader (former)', period: 'Jan 2025 - Jul 2026',
       bullets: ['Chosen as one of the Lovable Ambassadors to represent Lovable through events and partnerships.'],
     }],
   },
   {
-    key: 'hacklab', org: 'Hacklab', period: 'Oct 2024 - Present',
+    key: 'hacklab', org: 'Hacklab', logo: logoHacklab, period: 'Oct 2024 - Present',
     roles: [
       {
         title: 'President', period: 'Jan 2025 - Present',
@@ -202,14 +212,26 @@ function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
         overflow: 'hidden',
       }}
     >
-      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-        <span style={{
-          fontFamily: MONO, fontSize: accent ? 15 : 13.5, fontWeight: isOpen ? 600 : 500,
-          color: isOpen ? (accent ? GREEN.bright : GREEN.pale) : GREEN.mid,
-          transition: 'color 300ms',
-        }}>
-          {file.org}
-        </span>
+      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          {file.logo && (
+            <div style={{
+              width: accent ? 34 : 28, height: accent ? 34 : 28, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isOpen ? 0.5 : 0.22})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              transition: 'border-color 300ms',
+            }}>
+              <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
+            </div>
+          )}
+          <span style={{
+            fontFamily: MONO, fontSize: accent ? 15 : 13.5, fontWeight: isOpen ? 600 : 500,
+            color: isOpen ? (accent ? GREEN.bright : GREEN.pale) : GREEN.mid,
+            transition: 'color 300ms', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {file.org}
+          </span>
+        </div>
         <span style={{ fontFamily: MONO, fontSize: 10.5, color: GREEN.dim, whiteSpace: 'nowrap' }}>{file.period}</span>
       </div>
 
