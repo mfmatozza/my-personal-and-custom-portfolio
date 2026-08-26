@@ -22,11 +22,11 @@ import logoHacklab from './assets/logos/hacklab.png';
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
 
-// Cylinder carousel geometry (work-experience column only).
-const CARD_WIDTH = 300;
-const TOTAL_SLOTS = 8;
-const STEP_ANGLE = 360 / TOTAL_SLOTS;
-const RADIUS = CARD_WIDTH / (2 * Math.tan(Math.PI / TOTAL_SLOTS));
+// Cylinder carousel geometry (work-experience column only) — uniform card
+// size; the roll's radius is derived from card height and the item count so
+// N equal-size cards wrap the full 360deg with no gaps, like paper on a roll.
+const ROLL_CARD_W = 280;
+const ROLL_CARD_H = 58;
 
 const CMD = '$ cat status.txt';
 const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
@@ -314,89 +314,141 @@ function useVisible(threshold = 0.2) {
   return [ref, visible];
 }
 
-function CylinderCard({ file, angleDeg, distance, isCenter, onClick }) {
-  const scale = distance === 0 ? 1.15 : distance === 1 ? 0.85 : 0.65;
-  const opacity = distance === 0 ? 1 : distance === 1 ? 0.55 : 0.25;
-  const titleColor = distance === 0 ? GREEN.bright : distance === 1 ? GREEN.mid : GREEN.dim;
+// Normalize an angle in degrees to (-180, 180].
+function normalizeAngle(deg) {
+  let a = deg % 360;
+  if (a <= -180) a += 360;
+  if (a > 180) a -= 360;
+  return a;
+}
 
+// Nearest angle to `current` that is congruent to `desiredMod360` (mod 360) —
+// so rotating to a target always takes the shortest path, never the long way
+// round, no matter how many turns `current` has already accumulated.
+function nearestEquivalent(current, desiredMod360) {
+  const base = ((desiredMod360 % 360) + 360) % 360;
+  const curMod = ((current % 360) + 360) % 360;
+  let diff = base - curMod;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return current + diff;
+}
+
+const easeOutCubic = (t) => 1 - (1 - t) ** 3;
+
+function RollCard({ file, baseAngle, radius, eff, isFront, onClick }) {
+  const opacity = Math.max(0.16, 1 - Math.abs(eff) / 130);
   return (
     <div
-      onClick={!isCenter ? onClick : undefined}
+      onClick={onClick}
       style={{
-        position: 'absolute', top: 30, left: '50%', width: CARD_WIDTH, marginLeft: -CARD_WIDTH / 2,
-        transform: `rotateX(${angleDeg}deg) translateZ(${RADIUS}px)`,
-        transition: 'transform 600ms cubic-bezier(.22,.85,.25,1)',
-        pointerEvents: distance >= 2 ? 'none' : 'auto',
-        cursor: isCenter ? 'default' : 'pointer',
+        position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
+        marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
+        transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
+        cursor: isFront ? 'default' : 'pointer',
       }}
     >
       <div style={{
-        transform: `scale(${scale})`, transformOrigin: 'top center',
+        width: '100%', height: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
         opacity,
-        transition: 'transform 600ms cubic-bezier(.22,.85,.25,1), opacity 600ms cubic-bezier(.22,.85,.25,1)',
-        background: isCenter ? 'rgba(11,16,14,.95)' : 'rgba(11,16,14,.68)',
-        border: `1px solid rgba(92,244,154,${isCenter ? 0.55 : 0.22})`,
-        borderRadius: 8,
-        boxShadow: isCenter
-          ? '0 22px 44px rgba(0,0,0,.6), 0 0 26px rgba(92,244,154,.3)'
-          : '0 2px 5px rgba(0,0,0,.45)',
-        overflow: 'hidden',
+        background: isFront ? 'rgba(11,16,14,.95)' : 'rgba(11,16,14,.6)',
+        border: `1px solid rgba(92,244,154,${isFront ? 0.6 : 0.16})`,
+        borderRadius: 6,
+        boxShadow: isFront ? '0 0 22px rgba(92,244,154,.32), 0 10px 26px rgba(0,0,0,.55)' : 'none',
+        transition: 'opacity 120ms linear, border-color 200ms ease, box-shadow 200ms ease, background 200ms ease',
       }}>
-        <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            {file.logo && (
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isCenter ? 0.5 : 0.2})`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-              }}>
-                <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
-              </div>
-            )}
-            <span style={{
-              fontFamily: MONO, fontSize: 14.5, fontWeight: isCenter ? 600 : 500, color: titleColor, lineHeight: 1.25,
-              transition: 'color 300ms',
-            }}>
-              {file.org}
-            </span>
+        {file.logo && (
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isFront ? 0.5 : 0.18})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            transition: 'border-color 200ms ease',
+          }}>
+            <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>{file.period}</span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateRows: isCenter ? '1fr' : '0fr', transition: 'grid-template-rows 600ms cubic-bezier(.22,.85,.25,1)' }}>
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{ padding: '0 16px 16px', maxHeight: 300, overflowY: 'auto' }}>
-              {file.location && <Meta>{file.location}</Meta>}
-              {file.roles.map((r, i) => (
-                <div key={r.title} style={{ marginTop: i === 0 ? 8 : 14 }}>
-                  <div style={{ fontFamily: MONO, color: GREEN.pale, fontSize: 14 }}>{r.title}</div>
-                  {r.period && <Meta>{r.period}</Meta>}
-                  {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={13} />)}
-                  {r.badges && <Badges badges={r.badges} badgesIn={isCenter} />}
-                  {r.links && <Links links={r.links} />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        )}
+        <span style={{
+          fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
+          color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          transition: 'color 200ms ease',
+        }}>
+          {file.org}
+        </span>
+        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {file.period}
+        </span>
       </div>
     </div>
   );
 }
 
-// Vertical 3D drum: each experience sits at a fixed angle around a
-// horizontal (X) axis, like a rolodex viewed edge-on; rotating the drum
-// brings a different one to face-front, top to bottom. Never wraps —
-// activeIndex clamps to [0, files.length - 1].
+function ExperienceDetail({ file }) {
+  return (
+    <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid rgba(92,244,154,.14)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+        {file.logo && (
+          <div style={{
+            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(0,0,0,.4)', border: '1px solid rgba(92,244,154,.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+          }}>
+            <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
+          </div>
+        )}
+        <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 600, color: GREEN.bright }}>{file.org}</div>
+      </div>
+      <Meta>{file.period}{file.location ? ` · ${file.location}` : ''}</Meta>
+      {file.roles.map((r, i) => (
+        <div key={r.title} style={{ marginTop: i === 0 ? 12 : 16 }}>
+          <div style={{ fontFamily: MONO, color: GREEN.pale, fontSize: 14 }}>{r.title}</div>
+          {r.period && <Meta>{r.period}</Meta>}
+          {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={13} />)}
+          {r.badges && <Badges badges={r.badges} badgesIn />}
+          {r.links && <Links links={r.links} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// A roll of paper: N equal-size cards wrap the full 360deg of a small
+// cylinder (radius derived from card height + count, so they sit edge to
+// edge with no gaps). Dragging rotates it continuously, 1:1 with the
+// mouse — no discrete steps — and releasing carries the drag's momentum
+// into a spring-like settle onto the nearest card. Whichever card ends up
+// facing front gets the border/glow boost; its full details render below.
 function Cylinder({ files }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [dragDeg, setDragDeg] = useState(0);
+  const n = files.length;
+  const step = 360 / n;
+  const radius = ROLL_CARD_H / (2 * Math.tan(Math.PI / n));
+
+  const [drumAngle, setDrumAngle] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const dragStartY = useRef(0);
+  const angleRef = useRef(0);
+  const dragRef = useRef({ startY: 0, startAngle: 0, lastY: 0, lastT: 0, velocity: 0 });
+  const rafRef = useRef(null);
   const [containerRef, visible] = useVisible();
 
-  const clampIndex = (i) => Math.max(0, Math.min(files.length - 1, i));
-  const go = (delta) => setActiveIndex((i) => clampIndex(i + delta));
+  useEffect(() => { angleRef.current = drumAngle; }, [drumAngle]);
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+
+  const settleTo = (target, duration = 480) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const start = angleRef.current;
+    const delta = target - start;
+    const t0 = performance.now();
+    const step2 = (now) => {
+      const t = Math.min(1, (now - t0) / duration);
+      setDrumAngle(start + delta * easeOutCubic(t));
+      rafRef.current = t < 1 ? requestAnimationFrame(step2) : null;
+    };
+    rafRef.current = requestAnimationFrame(step2);
+  };
+
+  // Read angleRef (not the closed-over `drumAngle` state) so these stay
+  // correct without needing to be redefined on every animation frame.
+  const go = (delta) => settleTo(Math.round(angleRef.current / step) * step + delta * step);
+  const goToIndex = (i) => settleTo(nearestEquivalent(angleRef.current, -i * step));
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -406,65 +458,70 @@ function Cylinder({ files }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, n, step]);
 
   const onPointerDown = (e) => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     setDragging(true);
-    dragStartY.current = e.clientY;
+    dragRef.current = { startY: e.clientY, startAngle: drumAngle, lastY: e.clientY, lastT: performance.now(), velocity: 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
     if (!dragging) return;
-    setDragDeg(-(e.clientY - dragStartY.current) / 3.2);
+    const now = performance.now();
+    const newAngle = dragRef.current.startAngle + (e.clientY - dragRef.current.startY) * 0.6;
+    const dt = now - dragRef.current.lastT;
+    if (dt > 0) dragRef.current.velocity = (newAngle - drumAngle) / dt;
+    dragRef.current.lastT = now;
+    setDrumAngle(newAngle);
   };
   const endDrag = () => {
     if (!dragging) return;
     setDragging(false);
-    setActiveIndex((i) => clampIndex(i - Math.round(dragDeg / STEP_ANGLE)));
-    setDragDeg(0);
+    const projected = drumAngle + dragRef.current.velocity * 160;
+    settleTo(Math.round(projected / step) * step, 500);
   };
 
-  const drumRotation = activeIndex * STEP_ANGLE + dragDeg;
+  let frontIndex = 0, frontDist = Infinity;
+  files.forEach((f, i) => {
+    const d = Math.abs(normalizeAngle(drumAngle + i * step));
+    if (d < frontDist) { frontDist = d; frontIndex = i; }
+  });
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height: 460, perspective: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <button
-        onClick={() => go(-1)} disabled={activeIndex === 0}
-        aria-label="Previous experience" style={arrowButtonStyle(activeIndex === 0, 'top')}
-      >
-        ▲
-      </button>
+    <div ref={containerRef}>
+      <div style={{ position: 'relative', height: 200, perspective: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => go(-1)} aria-label="Previous experience" style={arrowButtonStyle(false, 'top')}>▲</button>
 
-      <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        style={{
-          position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
-          transform: `rotateX(${drumRotation}deg)`,
-          transition: dragging ? 'none' : 'transform 600ms cubic-bezier(.22,.85,.25,1)',
-          touchAction: 'pan-x', cursor: dragging ? 'grabbing' : 'grab',
-        }}
-      >
-        {files.map((f, i) => (
-          <CylinderCard
-            key={f.key}
-            file={f}
-            angleDeg={-i * STEP_ANGLE}
-            distance={Math.abs(i - activeIndex)}
-            isCenter={i === activeIndex}
-            onClick={() => setActiveIndex(i)}
-          />
-        ))}
+        <div
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          style={{
+            position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
+            transform: `rotateX(${drumAngle}deg)`,
+            touchAction: 'none', cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none',
+          }}
+        >
+          {files.map((f, i) => (
+            <RollCard
+              key={f.key}
+              file={f}
+              baseAngle={i * step}
+              radius={radius}
+              eff={normalizeAngle(drumAngle + i * step)}
+              isFront={i === frontIndex}
+              onClick={i === frontIndex ? undefined : () => goToIndex(i)}
+            />
+          ))}
+        </div>
+
+        <button onClick={() => go(1)} aria-label="Next experience" style={arrowButtonStyle(false, 'bottom')}>▼</button>
       </div>
 
-      <button
-        onClick={() => go(1)} disabled={activeIndex === files.length - 1}
-        aria-label="Next experience" style={arrowButtonStyle(activeIndex === files.length - 1, 'bottom')}
-      >
-        ▼
-      </button>
+      <ExperienceDetail file={files[frontIndex]} />
     </div>
   );
 }
