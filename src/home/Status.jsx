@@ -104,17 +104,17 @@ const EXPERIENCE = [
 const EXTRACURRICULARS = [
   {
     key: 'astra', org: 'Astra Bocconi', period: 'Oct 2024 - Present',
-    roles: [{
-      title: 'Head of Technology', period: 'Aug 2025 - Present',
-      bullets: ['Leading the technology division, overseeing technical projects and driving innovation within the organization.'],
-    }],
-  },
-  {
-    key: 'freeatb', org: 'Free at B',
-    roles: [{
-      title: 'Board Member', period: 'Oct 2024 - Aug 2025',
-      bullets: ['Contributed to strategic decisions and organizational growth as an active board member.'],
-    }],
+    roles: [
+      {
+        title: 'Head of Technology', period: 'Aug 2025 - Present',
+        bullets: ['Leading the technology division, overseeing technical projects and driving innovation within the organization.'],
+        links: ['Free at B', 'Website'],
+      },
+      {
+        title: 'Board Member', period: 'Oct 2024 - Aug 2025',
+        bullets: ['Contributed to strategic decisions and organizational growth as an active board member.'],
+      },
+    ],
   },
   {
     key: 'lovable', org: 'Lovable', period: 'Jan 2025 - Jul 2026',
@@ -152,6 +152,18 @@ function Meta({ children }) {
   return <div style={{ fontFamily: MONO, color: GREEN.dim, fontSize: 11.5, marginTop: 2 }}>{children}</div>;
 }
 
+function Links({ links }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+      {links.map((l) => (
+        <span key={l} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 11.5, color: GREEN.dim }}>
+          <span style={{ fontSize: 10 }}>↗</span>{l}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Badges({ badges, badgesIn }) {
   return (
     <div style={{ display: 'flex', gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
@@ -171,9 +183,6 @@ function Badges({ badges, badgesIn }) {
 }
 
 function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
-  const tilt = (index % 2 === 0 ? -1 : 1) * (1.2 + (index % 3) * 0.4);
-  const shiftX = (index % 2 === 0 ? -1 : 1) * 2;
-
   return (
     <div
       onMouseEnter={onEnter}
@@ -182,10 +191,7 @@ function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
         position: 'relative',
         marginTop: index === 0 ? 0 : -13,
         zIndex: isOpen ? 60 : index,
-        transformOrigin: '20% 0%',
-        transform: isOpen
-          ? 'rotate(0deg) translate(0px, -6px) scale(1.02)'
-          : `rotate(${tilt}deg) translate(${shiftX}px, 0px)`,
+        transform: isOpen ? 'translateY(-6px) scale(1.02)' : 'translateY(0px) scale(1)',
         transition: 'transform 420ms cubic-bezier(.22,.85,.25,1), box-shadow 420ms ease, border-color 300ms ease',
         background: isOpen ? 'rgba(11,16,14,.95)' : 'rgba(11,16,14,.68)',
         border: `1px solid rgba(92,244,154,${isOpen ? (accent ? 0.55 : 0.4) : 0.16})`,
@@ -219,6 +225,7 @@ function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
                 {r.period && <Meta>{r.period}</Meta>}
                 {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={accent ? 13 : 12} />)}
                 {r.badges && <Badges badges={r.badges} badgesIn={isOpen} />}
+                {r.links && <Links links={r.links} />}
               </div>
             ))}
           </div>
@@ -315,7 +322,7 @@ export default function Status() {
           <Stack files={EDUCATION} accent={false} />
         </Column>
 
-        <Column title="$ ./experience" accent>
+        <Column title="$ ./work-experience" accent>
           <Stack files={EXPERIENCE} accent />
         </Column>
 
