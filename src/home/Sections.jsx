@@ -3,8 +3,7 @@
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 
 const STUBS = [
-  { id: 'work', label: 'Selected work', bg: '#0b0d10' },
-  { id: 'about', label: 'About', bg: '#07080a' },
+  { id: 'work', label: 'Selected work', bg: '#07080a' },
   { id: 'contact', label: 'Contact', bg: '#0b0d10' },
 ];
 

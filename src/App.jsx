@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CompositionStage } from './intro/engine';
 import IntroAnimation, { INTRO_SCENES } from './intro/IntroAnimation';
 import Hero from './home/Hero';
+import Status from './home/Status';
 import Sections from './home/Sections';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
       {introDone && (
         <>
           <Hero />
+          <Status />
           <Sections />
         </>
       )}

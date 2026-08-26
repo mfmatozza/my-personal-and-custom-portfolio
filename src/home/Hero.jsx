@@ -7,6 +7,7 @@
 // from the hero and rides, fixed, into the header as a small avatar.
 import { useEffect, useRef, useState } from 'react';
 import photo from './assets/michele.jpg';
+import { useTypewriter } from './useTypewriter';
 
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
@@ -31,23 +32,6 @@ function rollEntry(rect) {
   const minTravel = window.innerWidth - rect.right + rect.size;
   const turns = Math.max(1, Math.ceil(minTravel / circumference));
   return { distance: turns * circumference, rotation: -360 * turns };
-}
-
-function useTypewriter(text, { startDelay = 300, speed = 110 } = {}) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    let i = 0;
-    let intervalId;
-    const timeoutId = setTimeout(() => {
-      intervalId = setInterval(() => {
-        i += 1;
-        setCount(i);
-        if (i >= text.length) clearInterval(intervalId);
-      }, speed);
-    }, startDelay);
-    return () => { clearTimeout(timeoutId); clearInterval(intervalId); };
-  }, [text, startDelay, speed]);
-  return count;
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
