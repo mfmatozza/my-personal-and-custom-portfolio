@@ -66,7 +66,10 @@ export default function Hero() {
       if (tickingRef.current) return;
       tickingRef.current = true;
       requestAnimationFrame(() => {
-        const p = Math.min(1, Math.max(0, window.scrollY / window.innerHeight));
+        // Dock finishes well before a full viewport of scrolling, so the
+        // avatar has already settled by the time the next section is
+        // actually in view instead of still animating over it.
+        const p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.55)));
         setProgress(p);
         tickingRef.current = false;
       });
@@ -94,7 +97,7 @@ export default function Hero() {
         }} />
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(100% 100% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.65) 100%)' }} />
 
-        <div style={{ position: 'relative', zIndex: 1, padding: '0 8vw', maxWidth: '68%' }}>
+        <div style={{ position: 'relative', zIndex: 1, padding: '0 max(64px, 16vw)', maxWidth: '68%' }}>
           <div style={{ fontFamily: MONO, fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)', color: GREEN.mid, opacity: 0.8, marginBottom: 18 }}>
             $ whoami
           </div>
