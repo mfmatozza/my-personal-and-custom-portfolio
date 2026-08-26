@@ -5,7 +5,7 @@
 // tilted and overlapping like index cards in a drawer; hovering pulls one
 // forward (un-rotates, lifts, expands) and moving away lets it slide back
 // into the stack. The current role stays popped out by default.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTypewriter } from './useTypewriter';
 import { useInView } from './useInView';
 import logoBocconi from './assets/logos/bocconi.png';
@@ -21,6 +21,12 @@ import logoHacklab from './assets/logos/hacklab.png';
 
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
+
+// Cylinder carousel geometry (work-experience column only).
+const CARD_WIDTH = 300;
+const TOTAL_SLOTS = 8;
+const STEP_ANGLE = 360 / TOTAL_SLOTS;
+const RADIUS = CARD_WIDTH / (2 * Math.tan(Math.PI / TOTAL_SLOTS));
 
 const CMD = '$ cat status.txt';
 const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
@@ -212,7 +218,7 @@ function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
         overflow: 'hidden',
       }}
     >
-      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           {file.logo && (
             <div style={{
@@ -225,14 +231,14 @@ function StackCard({ file, index, accent, isOpen, onEnter, onLeave }) {
             </div>
           )}
           <span style={{
-            fontFamily: MONO, fontSize: accent ? 15 : 13.5, fontWeight: isOpen ? 600 : 500,
+            fontFamily: MONO, fontSize: accent ? 15 : 13.5, fontWeight: isOpen ? 600 : 500, lineHeight: 1.25,
             color: isOpen ? (accent ? GREEN.bright : GREEN.pale) : GREEN.mid,
-            transition: 'color 300ms', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            transition: 'color 300ms',
           }}>
             {file.org}
           </span>
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, color: GREEN.dim, whiteSpace: 'nowrap' }}>{file.period}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>{file.period}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', transition: 'grid-template-rows 420ms cubic-bezier(.22,.85,.25,1)' }}>
@@ -275,6 +281,190 @@ function Stack({ files, accent }) {
           />
         );
       })}
+    </div>
+  );
+}
+
+function arrowButtonStyle(disabled, side) {
+  return {
+    position: 'absolute', [side]: -6, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
+    width: 34, height: 34, borderRadius: '50%',
+    background: 'rgba(11,16,14,.85)', border: `1px solid rgba(92,244,154,${disabled ? 0.12 : 0.4})`,
+    color: disabled ? GREEN.dim : GREEN.mid,
+    fontFamily: MONO, fontSize: 17, lineHeight: 1,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.35 : 1,
+    transition: 'opacity 300ms, border-color 300ms, color 300ms',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
+}
+
+// Continuously-updating visibility (unlike useInView, which fires once) —
+// needed to gate the keyboard listener only while the carousel is on screen.
+function useVisible(threshold = 0.2) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
+function CylinderCard({ file, angleDeg, distance, isCenter, onClick }) {
+  const scale = distance === 0 ? 1.15 : distance === 1 ? 0.85 : 0.65;
+  const opacity = distance === 0 ? 1 : distance === 1 ? 0.55 : 0.25;
+  const titleColor = distance === 0 ? GREEN.bright : distance === 1 ? GREEN.mid : GREEN.dim;
+
+  return (
+    <div
+      onClick={!isCenter ? onClick : undefined}
+      style={{
+        position: 'absolute', top: 30, left: '50%', width: CARD_WIDTH, marginLeft: -CARD_WIDTH / 2,
+        transform: `rotateX(${angleDeg}deg) translateZ(${RADIUS}px)`,
+        transition: 'transform 600ms cubic-bezier(.22,.85,.25,1)',
+        pointerEvents: distance >= 2 ? 'none' : 'auto',
+        cursor: isCenter ? 'default' : 'pointer',
+      }}
+    >
+      <div style={{
+        transform: `scale(${scale})`, transformOrigin: 'top center',
+        opacity,
+        transition: 'transform 600ms cubic-bezier(.22,.85,.25,1), opacity 600ms cubic-bezier(.22,.85,.25,1)',
+        background: isCenter ? 'rgba(11,16,14,.95)' : 'rgba(11,16,14,.68)',
+        border: `1px solid rgba(92,244,154,${isCenter ? 0.55 : 0.22})`,
+        borderRadius: 8,
+        boxShadow: isCenter
+          ? '0 22px 44px rgba(0,0,0,.6), 0 0 26px rgba(92,244,154,.3)'
+          : '0 2px 5px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            {file.logo && (
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isCenter ? 0.5 : 0.2})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              }}>
+                <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
+              </div>
+            )}
+            <span style={{
+              fontFamily: MONO, fontSize: 14.5, fontWeight: isCenter ? 600 : 500, color: titleColor, lineHeight: 1.25,
+              transition: 'color 300ms',
+            }}>
+              {file.org}
+            </span>
+          </div>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>{file.period}</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateRows: isCenter ? '1fr' : '0fr', transition: 'grid-template-rows 600ms cubic-bezier(.22,.85,.25,1)' }}>
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '0 16px 16px', maxHeight: 300, overflowY: 'auto' }}>
+              {file.location && <Meta>{file.location}</Meta>}
+              {file.roles.map((r, i) => (
+                <div key={r.title} style={{ marginTop: i === 0 ? 8 : 14 }}>
+                  <div style={{ fontFamily: MONO, color: GREEN.pale, fontSize: 14 }}>{r.title}</div>
+                  {r.period && <Meta>{r.period}</Meta>}
+                  {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={13} />)}
+                  {r.badges && <Badges badges={r.badges} badgesIn={isCenter} />}
+                  {r.links && <Links links={r.links} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Vertical 3D drum: each experience sits at a fixed angle around a
+// horizontal (X) axis, like a rolodex viewed edge-on; rotating the drum
+// brings a different one to face-front, top to bottom. Never wraps —
+// activeIndex clamps to [0, files.length - 1].
+function Cylinder({ files }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dragDeg, setDragDeg] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartY = useRef(0);
+  const [containerRef, visible] = useVisible();
+
+  const clampIndex = (i) => Math.max(0, Math.min(files.length - 1, i));
+  const go = (delta) => setActiveIndex((i) => clampIndex(i + delta));
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'ArrowUp') { e.preventDefault(); go(-1); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); go(1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visible]);
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    dragStartY.current = e.clientY;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragging) return;
+    setDragDeg(-(e.clientY - dragStartY.current) / 3.2);
+  };
+  const endDrag = () => {
+    if (!dragging) return;
+    setDragging(false);
+    setActiveIndex((i) => clampIndex(i - Math.round(dragDeg / STEP_ANGLE)));
+    setDragDeg(0);
+  };
+
+  const drumRotation = activeIndex * STEP_ANGLE + dragDeg;
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', height: 460, perspective: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <button
+        onClick={() => go(-1)} disabled={activeIndex === 0}
+        aria-label="Previous experience" style={arrowButtonStyle(activeIndex === 0, 'top')}
+      >
+        ▲
+      </button>
+
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        style={{
+          position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
+          transform: `rotateX(${drumRotation}deg)`,
+          transition: dragging ? 'none' : 'transform 600ms cubic-bezier(.22,.85,.25,1)',
+          touchAction: 'pan-x', cursor: dragging ? 'grabbing' : 'grab',
+        }}
+      >
+        {files.map((f, i) => (
+          <CylinderCard
+            key={f.key}
+            file={f}
+            angleDeg={-i * STEP_ANGLE}
+            distance={Math.abs(i - activeIndex)}
+            isCenter={i === activeIndex}
+            onClick={() => setActiveIndex(i)}
+          />
+        ))}
+      </div>
+
+      <button
+        onClick={() => go(1)} disabled={activeIndex === files.length - 1}
+        aria-label="Next experience" style={arrowButtonStyle(activeIndex === files.length - 1, 'bottom')}
+      >
+        ▼
+      </button>
     </div>
   );
 }
@@ -333,7 +523,7 @@ export default function Status() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: narrow ? '1fr' : '1fr 1.5fr 1fr',
+        gridTemplateColumns: narrow ? '1fr' : 'minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)',
         gap: narrow ? '8vh' : '4vw',
         marginTop: '8vh',
         opacity: outDone ? 1 : 0,
@@ -345,7 +535,7 @@ export default function Status() {
         </Column>
 
         <Column title="$ ./work-experience" accent>
-          <Stack files={EXPERIENCE} accent />
+          <Cylinder files={EXPERIENCE} />
         </Column>
 
         <Column title="$ ./extracurriculars">
