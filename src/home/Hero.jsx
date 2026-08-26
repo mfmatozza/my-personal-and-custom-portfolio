@@ -19,7 +19,7 @@ const DOCK = { size: 40, right: 20, top: (HEADER_H - 40) / 2 };
 function heroRect() {
   const w = window.innerWidth, h = window.innerHeight;
   const size = Math.min(380, Math.max(180, w * 0.26));
-  const right = Math.max(48, w * 0.08);
+  const right = Math.max(64, w * 0.16);
   return { size, right, top: h / 2 - size / 2 };
 }
 
@@ -33,7 +33,7 @@ function rollEntry(rect) {
   return { distance: turns * circumference, rotation: -360 * turns };
 }
 
-function useTypewriter(text, { startDelay = 300, speed = 55 } = {}) {
+function useTypewriter(text, { startDelay = 300, speed = 110 } = {}) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let i = 0;
@@ -133,13 +133,15 @@ export default function Hero() {
         width: `${avatarSize}px`, height: `${avatarSize}px`, borderRadius: '50%',
         zIndex: 200, pointerEvents: 'none',
         transform: `rotate(${dockSpin}deg)`,
-        boxShadow: rolled ? `0 0 0 2px rgba(92,244,154,${0.25 + 0.35 * progress}), 0 10px 40px rgba(0,0,0,.55)` : 'none',
-        transition: 'box-shadow 500ms ease-out',
       }}>
+        {/* The ring lives on this same element that translates+rotates in from
+            off-screen, so there's nothing to see (no static frame sitting at
+            the landing spot) until the photo itself rolls into view. */}
         <div style={{
           width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden',
+          boxShadow: `0 0 0 2px rgba(92,244,154,${0.3 + 0.3 * progress}), 0 10px 40px rgba(0,0,0,.55)`,
           transform: `translateX(${rolled ? 0 : entry.distance}px) rotate(${rolled ? entry.rotation : 0}deg)`,
-          transition: 'transform 1300ms cubic-bezier(0.16,0.85,0.24,1)',
+          transition: 'transform 2400ms ease-out',
         }}>
           <img src={photo} alt="Michele Matozza" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         </div>
