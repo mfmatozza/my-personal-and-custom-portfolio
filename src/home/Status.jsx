@@ -25,8 +25,8 @@ const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe
 // Cylinder carousel geometry (work-experience column only) — uniform card
 // size; the roll's radius is derived from card height and the item count so
 // N equal-size cards wrap the full 360deg with no gaps, like paper on a roll.
-const ROLL_CARD_W = 280;
-const ROLL_CARD_H = 58;
+const ROLL_CARD_W = 320;
+const ROLL_CARD_H = 236;
 
 const CMD = '$ cat status.txt';
 const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
@@ -336,8 +336,12 @@ function nearestEquivalent(current, desiredMod360) {
 
 const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 
+// Every card carries its full content at all times (org, period, location,
+// role, bullets, badges, links) — uniform size, uniform animation. Only
+// opacity and the border/glow distinguish the front-facing one; nothing
+// expands or collapses, so there's nothing to desync from the spin.
 function RollCard({ file, baseAngle, radius, eff, isFront, onClick }) {
-  const opacity = Math.max(0.16, 1 - Math.abs(eff) / 130);
+  const opacity = Math.max(0.14, 1 - Math.abs(eff) / 150);
   return (
     <div
       onClick={onClick}
@@ -349,74 +353,62 @@ function RollCard({ file, baseAngle, radius, eff, isFront, onClick }) {
       }}
     >
       <div style={{
-        width: '100%', height: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
+        width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px',
         opacity,
-        background: isFront ? 'rgba(11,16,14,.95)' : 'rgba(11,16,14,.6)',
+        background: isFront ? 'rgba(11,16,14,.96)' : 'rgba(11,16,14,.72)',
         border: `1px solid rgba(92,244,154,${isFront ? 0.6 : 0.16})`,
-        borderRadius: 6,
-        boxShadow: isFront ? '0 0 22px rgba(92,244,154,.32), 0 10px 26px rgba(0,0,0,.55)' : 'none',
+        borderRadius: 8,
+        boxShadow: isFront ? '0 0 26px rgba(92,244,154,.32), 0 14px 30px rgba(0,0,0,.55)' : 'none',
         transition: 'opacity 120ms linear, border-color 200ms ease, box-shadow 200ms ease, background 200ms ease',
       }}>
-        {file.logo && (
-          <div style={{
-            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isFront ? 0.5 : 0.18})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-            transition: 'border-color 200ms ease',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {file.logo && (
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isFront ? 0.5 : 0.18})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              transition: 'border-color 200ms ease',
+            }}>
+              <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
+            </div>
+          )}
+          <span style={{
+            fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
+            color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            transition: 'color 200ms ease',
           }}>
-            <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
-          </div>
-        )}
-        <span style={{
-          fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
-          color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          transition: 'color 200ms ease',
-        }}>
-          {file.org}
-        </span>
-        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
-          {file.period}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ExperienceDetail({ file }) {
-  return (
-    <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid rgba(92,244,154,.14)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        {file.logo && (
-          <div style={{
-            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(0,0,0,.4)', border: '1px solid rgba(92,244,154,.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-          }}>
-            <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
-          </div>
-        )}
-        <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 600, color: GREEN.bright }}>{file.org}</div>
-      </div>
-      <Meta>{file.period}{file.location ? ` · ${file.location}` : ''}</Meta>
-      {file.roles.map((r, i) => (
-        <div key={r.title} style={{ marginTop: i === 0 ? 12 : 16 }}>
-          <div style={{ fontFamily: MONO, color: GREEN.pale, fontSize: 14 }}>{r.title}</div>
-          {r.period && <Meta>{r.period}</Meta>}
-          {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={13} />)}
-          {r.badges && <Badges badges={r.badges} badgesIn />}
-          {r.links && <Links links={r.links} />}
+            {file.org}
+          </span>
+          <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {file.period}
+          </span>
         </div>
-      ))}
+
+        {file.location && <Meta>{file.location}</Meta>}
+        {file.roles.map((r, i) => (
+          <div key={r.title} style={{ marginTop: i === 0 ? 8 : 12 }}>
+            <div style={{ fontFamily: MONO, color: isFront ? GREEN.pale : GREEN.mid, fontSize: 12.5, transition: 'color 200ms ease' }}>
+              {r.title}
+            </div>
+            {r.period && <Meta>{r.period}</Meta>}
+            {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={11} />)}
+            {r.badges && <Badges badges={r.badges} badgesIn={isFront} />}
+            {r.links && <Links links={r.links} />}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 // A roll of paper: N equal-size cards wrap the full 360deg of a small
 // cylinder (radius derived from card height + count, so they sit edge to
-// edge with no gaps). Dragging rotates it continuously, 1:1 with the
-// mouse — no discrete steps — and releasing carries the drag's momentum
-// into a spring-like settle onto the nearest card. Whichever card ends up
-// facing front gets the border/glow boost; its full details render below.
+// edge with no gaps, so a big card height also buys a big, clearly circular
+// radius for free). Dragging rotates it continuously, 1:1 with the mouse —
+// no discrete steps — and releasing carries real (friction-decayed) spin
+// momentum before settling onto the nearest card. Whichever card ends up
+// facing front gets the border/glow boost; every card always shows its
+// full content, so nothing has to expand/collapse out of sync with the spin.
 function Cylinder({ files }) {
   const n = files.length;
   const step = 360 / n;
@@ -432,9 +424,12 @@ function Cylinder({ files }) {
   useEffect(() => { angleRef.current = drumAngle; }, [drumAngle]);
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
-  const settleTo = (target, duration = 480) => {
+  const settleTo = (target, duration = 480, fromOverride) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const start = angleRef.current;
+    // fromOverride: pass the just-computed position when chaining straight out
+    // of the momentum loop, since angleRef won't have caught up to it yet
+    // (it syncs from an effect that hasn't run for this frame).
+    const start = fromOverride != null ? fromOverride : angleRef.current;
     const delta = target - start;
     const t0 = performance.now();
     const step2 = (now) => {
@@ -461,10 +456,37 @@ function Cylinder({ files }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, n, step]);
 
+  // Real spin: released above a flick threshold, the drum keeps turning
+  // under its own (simulated) inertia, losing speed to exponential
+  // friction each frame, and only snaps to the nearest card once it's
+  // slowed down enough — a proper decelerating spin, not a short ease.
+  const spinWithMomentum = (initialVelocity) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const FRICTION_PER_MS = 0.0018; // ~385ms half-life
+    const MIN_VELOCITY = 0.006; // deg/ms — below this, hand off to the settle ease
+    let v = initialVelocity;
+    let pos = angleRef.current;
+    let lastT = performance.now();
+    const frame = (now) => {
+      const dt = now - lastT;
+      lastT = now;
+      v *= Math.exp(-FRICTION_PER_MS * dt);
+      pos += v * dt;
+      setDrumAngle(pos);
+      if (Math.abs(v) > MIN_VELOCITY) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else {
+        rafRef.current = null;
+        settleTo(Math.round(pos / step) * step, 380, pos);
+      }
+    };
+    rafRef.current = requestAnimationFrame(frame);
+  };
+
   const onPointerDown = (e) => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     setDragging(true);
-    dragRef.current = { startY: e.clientY, startAngle: drumAngle, lastY: e.clientY, lastT: performance.now(), velocity: 0 };
+    dragRef.current = { startY: e.clientY, startAngle: angleRef.current, lastY: e.clientY, lastT: performance.now(), velocity: 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
@@ -472,15 +494,24 @@ function Cylinder({ files }) {
     const now = performance.now();
     const newAngle = dragRef.current.startAngle + (e.clientY - dragRef.current.startY) * 0.6;
     const dt = now - dragRef.current.lastT;
-    if (dt > 0) dragRef.current.velocity = (newAngle - drumAngle) / dt;
+    if (dt > 0) {
+      const instV = (newAngle - angleRef.current) / dt;
+      // Low-pass the velocity sample so one noisy last-pixel move before
+      // release doesn't dictate the whole spin.
+      dragRef.current.velocity = dragRef.current.velocity * 0.7 + instV * 0.3;
+    }
     dragRef.current.lastT = now;
     setDrumAngle(newAngle);
   };
   const endDrag = () => {
     if (!dragging) return;
     setDragging(false);
-    const projected = drumAngle + dragRef.current.velocity * 160;
-    settleTo(Math.round(projected / step) * step, 500);
+    const v = dragRef.current.velocity;
+    if (Math.abs(v) > 0.05) {
+      spinWithMomentum(v);
+    } else {
+      settleTo(Math.round(angleRef.current / step) * step, 400);
+    }
   };
 
   let frontIndex = 0, frontDist = Infinity;
@@ -491,7 +522,7 @@ function Cylinder({ files }) {
 
   return (
     <div ref={containerRef}>
-      <div style={{ position: 'relative', height: 200, perspective: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', height: 420, perspective: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <button onClick={() => go(-1)} aria-label="Previous experience" style={arrowButtonStyle(false, 'top')}>▲</button>
 
         <div
@@ -520,8 +551,6 @@ function Cylinder({ files }) {
 
         <button onClick={() => go(1)} aria-label="Next experience" style={arrowButtonStyle(false, 'bottom')}>▼</button>
       </div>
-
-      <ExperienceDetail file={files[frontIndex]} />
     </div>
   );
 }
@@ -557,7 +586,8 @@ export default function Status() {
   const cmdDone = cmdTyped >= CMD.length;
   const outTyped = useTypewriter(OCCUPATION, { start: cmdDone, startDelay: 200, speed: 22 });
   const outDone = outTyped >= OCCUPATION.length;
-  const narrow = useNarrow();
+  // education/extracurriculars are unrendered for now (see note below) —
+  // useNarrow stays defined for when they move into their own section.
 
   return (
     <section ref={sectionRef} style={{
@@ -578,25 +608,18 @@ export default function Status() {
         {cmdDone && !outDone && <Caret />}
       </div>
 
+      {/* Education / extracurriculars temporarily unrendered (not deleted —
+          EDUCATION/EXTRACURRICULARS data and <Stack>/<Column> below are
+          still here to move into their own section later). Work-experience
+          gets the full section width for now, room for the bigger roll. */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: narrow ? '1fr' : 'minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)',
-        gap: narrow ? '8vh' : '4vw',
         marginTop: '8vh',
         opacity: outDone ? 1 : 0,
         transform: `translateY(${outDone ? 0 : 16}px)`,
         transition: 'opacity 500ms ease-out, transform 500ms ease-out',
       }}>
-        <Column title="$ ./education">
-          <Stack files={EDUCATION} accent={false} />
-        </Column>
-
         <Column title="$ ./work-experience" accent>
           <Cylinder files={EXPERIENCE} />
-        </Column>
-
-        <Column title="$ ./extracurriculars">
-          <Stack files={EXTRACURRICULARS} accent={false} />
         </Column>
       </div>
     </section>
