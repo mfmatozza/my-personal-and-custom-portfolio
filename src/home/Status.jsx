@@ -57,6 +57,7 @@ export default function Status() {
 
   const [tab, setTab] = useState('education');
   const [anim, setAnim] = useState('in');
+  const [hover, setHover] = useState(null);
 
   function selectTab(key) {
     if (key === tab || anim === 'out') return;
@@ -68,6 +69,24 @@ export default function Status() {
   }
 
   const active = TABS.find((t) => t.key === tab);
+
+  const trackRef = useRef(null);
+  const tabRefs = useRef({});
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+
+  useEffect(() => {
+    function measure() {
+      const track = trackRef.current;
+      const btn = tabRefs.current[tab];
+      if (!track || !btn) return;
+      const trackRect = track.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      setIndicator({ left: btnRect.left - trackRect.left, width: btnRect.width, ready: true });
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [tab, outDone]);
 
   return (
     <section ref={sectionRef} style={{
@@ -88,26 +107,41 @@ export default function Status() {
         {cmdDone && !outDone && <Caret />}
       </div>
 
-      <div style={{
-        display: 'flex', gap: 8, marginTop: '6vh', flexWrap: 'wrap',
+      <div ref={trackRef} style={{
+        position: 'relative', display: 'inline-flex', gap: 2, marginTop: '6vh',
+        background: 'rgba(92,244,154,.05)', border: '1px solid rgba(92,244,154,.14)',
+        borderRadius: 8, padding: 4,
         opacity: outDone ? 1 : 0, transition: 'opacity 400ms ease-out',
       }}>
-        {TABS.map((t) => {
+        {indicator.ready && (
+          <div style={{
+            position: 'absolute', top: 4, bottom: 4, left: indicator.left, width: indicator.width,
+            background: 'rgba(92,244,154,.14)', border: '1px solid rgba(92,244,154,.55)', borderRadius: 6,
+            boxShadow: '0 0 14px rgba(92,244,154,.25)',
+            transition: 'left 280ms cubic-bezier(.4,0,.2,1), width 280ms cubic-bezier(.4,0,.2,1)',
+          }} />
+        )}
+        {TABS.map((t, i) => {
           const isActive = t.key === tab;
+          const isHover = hover === t.key;
           return (
             <button
               key={t.key}
+              ref={(el) => { tabRefs.current[t.key] = el; }}
               onClick={() => selectTab(t.key)}
+              onMouseEnter={() => setHover(t.key)}
+              onMouseLeave={() => setHover(null)}
               style={{
+                position: 'relative', zIndex: 1,
                 fontFamily: MONO, fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', cursor: 'pointer',
-                background: isActive ? 'rgba(92,244,154,.12)' : 'transparent',
-                border: `1px solid ${isActive ? 'rgba(92,244,154,.5)' : 'rgba(92,244,154,.18)'}`,
-                borderRadius: 6, padding: '8px 14px',
-                color: isActive ? GREEN.pale : GREEN.dim,
-                transition: 'color 160ms, border-color 160ms, background 160ms',
+                background: 'transparent', border: 'none', borderRadius: 6, padding: '8px 14px',
+                display: 'flex', alignItems: 'baseline', gap: 6,
+                color: isActive ? GREEN.pale : isHover ? GREEN.mid : GREEN.dim,
+                transition: 'color 200ms',
               }}
             >
-              $ {t.label}
+              <span style={{ fontSize: '0.75em', opacity: 0.6 }}>{String(i + 1).padStart(2, '0')}</span>
+              {t.label}
             </button>
           );
         })}
