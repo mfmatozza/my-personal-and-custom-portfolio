@@ -399,9 +399,12 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
         }}
       >
         <div style={{
-          width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px',
-          background: 'rgba(11,16,14,.96)', border: '1px solid rgba(92,244,154,.6)', borderRadius: 8,
-          boxShadow: '0 0 26px rgba(92,244,154,.32), 0 14px 30px rgba(0,0,0,.55)',
+          width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px', borderRadius: 8,
+          // No hard border/box-shadow rectangle here on purpose — a bright
+          // bordered box reads as a flat square against the curved slices
+          // around it and breaks the illusion of one continuous drum. A
+          // soft radial glow (no edge) marks it as "in focus" instead.
+          background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(11,16,14,.82) 68%)',
         }}>
           <CardBody file={file} isFront />
         </div>
@@ -428,10 +431,10 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
               transform: `rotateX(${subAngle}deg) translateZ(${radius}px)`,
               overflow: 'hidden', cursor: 'pointer',
               opacity, transition: 'opacity 120ms linear',
+              // No borders between/around slices — straight edges on a
+              // curved surface read as facets. The fill alone (plus the
+              // opacity falloff) defines the roll's silhouette.
               background: 'rgba(11,16,14,.72)',
-              borderLeft: '1px solid rgba(92,244,154,.16)', borderRight: '1px solid rgba(92,244,154,.16)',
-              borderTop: isTop ? '1px solid rgba(92,244,154,.16)' : 'none',
-              borderBottom: isBottom ? '1px solid rgba(92,244,154,.16)' : 'none',
               borderTopLeftRadius: isTop ? 8 : 0, borderTopRightRadius: isTop ? 8 : 0,
               borderBottomLeftRadius: isBottom ? 8 : 0, borderBottomRightRadius: isBottom ? 8 : 0,
             }}
