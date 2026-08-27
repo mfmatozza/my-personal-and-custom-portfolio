@@ -373,7 +373,7 @@ function CardBody({ file, isFront }) {
 // warp around instead of looking like flat panels stacked on a hinge.
 const SUB_SLICES = 5;
 
-function RollCard({ file, baseAngle, step, radius, eff, isFront, settled, onClick }) {
+function RollCard({ file, baseAngle, step, radius, drumAngle, isFront, onClick }) {
   if (isFront) {
     return (
       <div
@@ -405,7 +405,6 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, settled, onClic
     );
   }
 
-  const opacity = Math.max(0.12, 1 - Math.abs(eff) / 210);
   const sliceH = ROLL_CARD_H / SUB_SLICES;
 
   return (
@@ -414,6 +413,18 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, settled, onClic
         const subAngle = baseAngle - step / 2 + (step * (j + 0.5)) / SUB_SLICES;
         const isTop = j === 0;
         const isBottom = j === SUB_SLICES - 1;
+        // Pure lighting, no text — a slice's true angle to the camera (its
+        // own rotation plus however far the whole drum has turned) sets how
+        // "lit" it looks, like a glossy cylinder catching a light straight
+        // ahead. That's what actually reads as curvature and motion once
+        // slices can't carry legible content: brightest dead-on, darker as
+        // a slice turns away, with nothing to ever misread as overlap.
+        const totalAngle = normalizeAngle(drumAngle + subAngle);
+        const light = Math.max(0, Math.cos((totalAngle * Math.PI) / 180));
+        const mix = light * 0.22;
+        const r = Math.round(9 + (92 - 9) * mix);
+        const g = Math.round(13 + (244 - 13) * mix);
+        const b = Math.round(12 + (154 - 12) * mix);
         return (
           <div
             key={j}
@@ -424,30 +435,11 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, settled, onClic
               transform: `rotateX(${subAngle}deg) translateZ(${radius}px)`,
               backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
               overflow: 'hidden', cursor: 'pointer',
-              // Solid, NOT distance-dependent — this is what actually occludes
-              // cards further back in the drum's real 3D depth. Letting it
-              // fade with distance (as the content below still does) is what
-              // was causing every card's text to bleed through each other
-              // mid-spin instead of nearer cards properly hiding farther ones.
-              background: 'rgba(9,13,12,.94)',
+              background: `rgba(${r},${g},${b},.94)`,
               borderTopLeftRadius: isTop ? 8 : 0, borderTopRightRadius: isTop ? 8 : 0,
               borderBottomLeftRadius: isBottom ? 8 : 0, borderBottomRightRadius: isBottom ? 8 : 0,
             }}
-          >
-            {/* Once the drum is at rest, only the front panel needs to be
-                legible — every other card's own content here would just be
-                the exact same near-neighbor bleed problem in a new form.
-                Content only populates these slices while actually spinning,
-                which is the one time the full curved-drum content was
-                actually asked for. */}
-            {!settled && (
-              <div style={{ opacity, transition: 'opacity 120ms linear' }}>
-                <div style={{ position: 'relative', top: -j * sliceH, width: '100%', height: ROLL_CARD_H, padding: '12px 16px' }}>
-                  <CardBody file={file} isFront={false} />
-                </div>
-              </div>
-            )}
-          </div>
+          />
         );
       })}
     </>
@@ -654,9 +646,8 @@ function Cylinder({ files }) {
               baseAngle={i * step}
               step={step}
               radius={radius}
-              eff={normalizeAngle(drumAngle + i * step)}
+              drumAngle={drumAngle}
               isFront={settled && i === frontIndex}
-              settled={settled}
               onClick={i === frontIndex ? undefined : () => goToIndex(i)}
             />
           ))}
