@@ -363,17 +363,18 @@ function CardBody({ file, isFront }) {
   );
 }
 
-// Cards are cheap flat rectangles, so one per 60deg step reads as a hexagon,
-// not a cylinder — the front card stays a single crisp flat panel (it needs
-// to be perfectly legible), but every OTHER card is built from SUB_SLICES
-// thin horizontal strips, each independently rotated across the card's own
-// angular span and windowed (via a shared, vertically-shifted content
-// block) onto the right band of that card's text. More, thinner facets
-// approximate the true curve closely enough that the roll's sides visibly
-// warp around instead of looking like flat panels stacked on a hinge.
-const SUB_SLICES = 5;
+// A toilet-paper-roll drum: each experience is ONE flat sheet — not curved,
+// not sliced — sitting at its own baseAngle around the cylinder. With the
+// radius derived from card height + count (see Cylinder below), adjacent
+// sheets' edges land exactly on top of each other, so they touch at the
+// seams with no gap and, critically, no overlap: a flat plane can never
+// intersect its neighbor the way the old sliced/curved cards could. The
+// front sheet gets the full, fully-legible treatment; every other sheet
+// still shows its own identity (logo + org), dimmed by how far it's turned
+// from the camera, so the roll reads as distinct pages, not a blank drum.
+function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
+  const eff = normalizeAngle(drumAngle + baseAngle);
 
-function RollCard({ file, baseAngle, step, radius, drumAngle, isFront, onClick }) {
   if (isFront) {
     return (
       <div
@@ -384,19 +385,13 @@ function RollCard({ file, baseAngle, step, radius, drumAngle, isFront, onClick }
           transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
           // Without this, a card rotated past 90deg (facing away from the
           // camera, i.e. on the far side of the drum) still renders —
-          // mirror-flipped — instead of disappearing. That was the real
-          // cause of the overlap: every card on the far side was piling
-          // into view at once, not just the near neighbors.
+          // mirror-flipped — instead of disappearing.
           backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
           cursor: 'default',
         }}
       >
         <div style={{
           width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px', borderRadius: 8,
-          // No hard border/box-shadow rectangle here on purpose — a bright
-          // bordered box reads as a flat square against the curved slices
-          // around it and breaks the illusion of one continuous drum. A
-          // soft radial glow (no edge) marks it as "in focus" instead.
           background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(9,13,12,.96) 68%)',
         }}>
           <CardBody file={file} isFront />
@@ -405,44 +400,43 @@ function RollCard({ file, baseAngle, step, radius, drumAngle, isFront, onClick }
     );
   }
 
-  const sliceH = ROLL_CARD_H / SUB_SLICES;
+  const light = Math.max(0, Math.cos((eff * Math.PI) / 180));
 
   return (
-    <>
-      {Array.from({ length: SUB_SLICES }).map((_, j) => {
-        const subAngle = baseAngle - step / 2 + (step * (j + 0.5)) / SUB_SLICES;
-        const isTop = j === 0;
-        const isBottom = j === SUB_SLICES - 1;
-        // Pure lighting, no text — a slice's true angle to the camera (its
-        // own rotation plus however far the whole drum has turned) sets how
-        // "lit" it looks, like a glossy cylinder catching a light straight
-        // ahead. That's what actually reads as curvature and motion once
-        // slices can't carry legible content: brightest dead-on, darker as
-        // a slice turns away, with nothing to ever misread as overlap.
-        const totalAngle = normalizeAngle(drumAngle + subAngle);
-        const light = Math.max(0, Math.cos((totalAngle * Math.PI) / 180));
-        const mix = light * 0.22;
-        const r = Math.round(9 + (92 - 9) * mix);
-        const g = Math.round(13 + (244 - 13) * mix);
-        const b = Math.round(12 + (154 - 12) * mix);
-        return (
-          <div
-            key={j}
-            onClick={onClick}
-            style={{
-              position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: sliceH,
-              marginLeft: -ROLL_CARD_W / 2, marginTop: -sliceH / 2,
-              transform: `rotateX(${subAngle}deg) translateZ(${radius}px)`,
-              backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-              overflow: 'hidden', cursor: 'pointer',
-              background: `rgba(${r},${g},${b},.94)`,
-              borderTopLeftRadius: isTop ? 8 : 0, borderTopRightRadius: isTop ? 8 : 0,
-              borderBottomLeftRadius: isBottom ? 8 : 0, borderBottomRightRadius: isBottom ? 8 : 0,
-            }}
-          />
-        );
-      })}
-    </>
+    <div
+      onClick={onClick}
+      style={{
+        position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
+        marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
+        transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
+        backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
+        overflow: 'hidden', cursor: 'pointer', borderRadius: 8,
+        background: `rgba(${Math.round(9 + 83 * light * 0.25)},${Math.round(13 + 231 * light * 0.25)},${Math.round(12 + 142 * light * 0.25)},.96)`,
+      }}
+    >
+      <div style={{ padding: '12px 16px', opacity: Math.max(0.28, light) }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {file.logo && (
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(0,0,0,.4)', border: '1px solid rgba(92,244,154,.22)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            }}>
+              <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
+            </div>
+          )}
+          <span style={{
+            fontFamily: MONO, fontSize: 13, fontWeight: 500, color: GREEN.mid,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {file.org}
+          </span>
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: GREEN.dim, marginTop: 6 }}>
+          {file.period}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -644,7 +638,6 @@ function Cylinder({ files }) {
               key={f.key}
               file={f}
               baseAngle={i * step}
-              step={step}
               radius={radius}
               drumAngle={drumAngle}
               isFront={settled && i === frontIndex}
