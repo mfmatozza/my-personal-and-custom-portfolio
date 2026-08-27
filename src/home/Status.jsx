@@ -285,20 +285,6 @@ function Stack({ files, accent }) {
   );
 }
 
-function arrowButtonStyle(disabled, side) {
-  return {
-    position: 'absolute', [side]: -6, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
-    width: 34, height: 34, borderRadius: '50%',
-    background: 'rgba(11,16,14,.85)', border: `1px solid rgba(92,244,154,${disabled ? 0.12 : 0.4})`,
-    color: disabled ? GREEN.dim : GREEN.mid,
-    fontFamily: MONO, fontSize: 17, lineHeight: 1,
-    cursor: disabled ? 'default' : 'pointer',
-    opacity: disabled ? 0.35 : 1,
-    transition: 'opacity 300ms, border-color 300ms, color 300ms',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  };
-}
-
 // Continuously-updating visibility (unlike useInView, which fires once) —
 // needed to gate the keyboard listener only while the carousel is on screen.
 function useVisible(threshold = 0.2) {
@@ -505,6 +491,11 @@ function Cylinder({ files }) {
 
   const [drumAngle, setDrumAngle] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // True for the whole duration of any spin (drag, momentum, or the eased
+  // settle) — while true, no card renders as the single flat "front" panel,
+  // so nothing pops between representations as the drum passes each card.
+  // That upgrade only happens once it's actually at rest.
+  const [animating, setAnimating] = useState(false);
   const angleRef = useRef(0);
   const dragRef = useRef({ startY: 0, startAngle: 0, lastY: 0, lastT: 0, velocity: 0 });
   const rafRef = useRef(null);
@@ -521,10 +512,16 @@ function Cylinder({ files }) {
     const start = fromOverride != null ? fromOverride : angleRef.current;
     const delta = target - start;
     const t0 = performance.now();
+    setAnimating(true);
     const step2 = (now) => {
       const t = Math.min(1, (now - t0) / duration);
       setDrumAngle(start + delta * easeOutCubic(t));
-      rafRef.current = t < 1 ? requestAnimationFrame(step2) : null;
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step2);
+      } else {
+        rafRef.current = null;
+        setAnimating(false);
+      }
     };
     rafRef.current = requestAnimationFrame(step2);
   };
@@ -551,6 +548,7 @@ function Cylinder({ files }) {
   // slowed down enough — a proper decelerating spin, not a short ease.
   const spinWithMomentum = (initialVelocity) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setAnimating(true);
     const FRICTION_PER_MS = 0.0018; // ~385ms half-life
     const MIN_VELOCITY = 0.006; // deg/ms — below this, hand off to the settle ease
     let v = initialVelocity;
@@ -609,13 +607,16 @@ function Cylinder({ files }) {
     if (d < frontDist) { frontDist = d; frontIndex = i; }
   });
 
+  // The flat, fully-legible "front" treatment only kicks in once the drum
+  // has actually stopped — mid-spin every card renders as the uniform
+  // curved slices, so nothing snaps between representations as it passes.
+  const settled = !dragging && !animating;
+
   return (
     <div ref={containerRef}>
       <Timeline files={files} frontIndex={frontIndex} onSelect={(i) => goToIndex(i, 1400)} />
 
-      <div style={{ position: 'relative', height: 460, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <button onClick={() => go(-1)} aria-label="Previous experience" style={arrowButtonStyle(false, 'top')}>▲</button>
-
+      <div style={{ position: 'relative', height: 460, marginTop: 36, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -635,13 +636,11 @@ function Cylinder({ files }) {
               step={step}
               radius={radius}
               eff={normalizeAngle(drumAngle + i * step)}
-              isFront={i === frontIndex}
+              isFront={settled && i === frontIndex}
               onClick={i === frontIndex ? undefined : () => goToIndex(i)}
             />
           ))}
         </div>
-
-        <button onClick={() => go(1)} aria-label="Next experience" style={arrowButtonStyle(false, 'bottom')}>▼</button>
       </div>
     </div>
   );
