@@ -27,6 +27,7 @@ const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe
 // N equal-size cards wrap the full 360deg with no gaps, like paper on a roll.
 const ROLL_CARD_W = 320;
 const ROLL_CARD_H = 236;
+const ROLL_WRAP_H = 460;
 
 const CMD = '$ cat status.txt';
 const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
@@ -372,7 +373,7 @@ function CardBody({ file, isFront }) {
 // warp around instead of looking like flat panels stacked on a hinge.
 const SUB_SLICES = 5;
 
-function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
+function RollCard({ file, baseAngle, step, radius, eff, isFront, settled, onClick }) {
   if (isFront) {
     return (
       <div
@@ -381,6 +382,12 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
           position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
           marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
           transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
+          // Without this, a card rotated past 90deg (facing away from the
+          // camera, i.e. on the far side of the drum) still renders —
+          // mirror-flipped — instead of disappearing. That was the real
+          // cause of the overlap: every card on the far side was piling
+          // into view at once, not just the near neighbors.
+          backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
           cursor: 'default',
         }}
       >
@@ -390,7 +397,7 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
           // bordered box reads as a flat square against the curved slices
           // around it and breaks the illusion of one continuous drum. A
           // soft radial glow (no edge) marks it as "in focus" instead.
-          background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(11,16,14,.82) 68%)',
+          background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(9,13,12,.96) 68%)',
         }}>
           <CardBody file={file} isFront />
         </div>
@@ -415,19 +422,31 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
               position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: sliceH,
               marginLeft: -ROLL_CARD_W / 2, marginTop: -sliceH / 2,
               transform: `rotateX(${subAngle}deg) translateZ(${radius}px)`,
+              backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
               overflow: 'hidden', cursor: 'pointer',
-              opacity, transition: 'opacity 120ms linear',
-              // No borders between/around slices — straight edges on a
-              // curved surface read as facets. The fill alone (plus the
-              // opacity falloff) defines the roll's silhouette.
-              background: 'rgba(11,16,14,.72)',
+              // Solid, NOT distance-dependent — this is what actually occludes
+              // cards further back in the drum's real 3D depth. Letting it
+              // fade with distance (as the content below still does) is what
+              // was causing every card's text to bleed through each other
+              // mid-spin instead of nearer cards properly hiding farther ones.
+              background: 'rgba(9,13,12,.94)',
               borderTopLeftRadius: isTop ? 8 : 0, borderTopRightRadius: isTop ? 8 : 0,
               borderBottomLeftRadius: isBottom ? 8 : 0, borderBottomRightRadius: isBottom ? 8 : 0,
             }}
           >
-            <div style={{ position: 'relative', top: -j * sliceH, width: '100%', height: ROLL_CARD_H, padding: '12px 16px' }}>
-              <CardBody file={file} isFront={false} />
-            </div>
+            {/* Once the drum is at rest, only the front panel needs to be
+                legible — every other card's own content here would just be
+                the exact same near-neighbor bleed problem in a new form.
+                Content only populates these slices while actually spinning,
+                which is the one time the full curved-drum content was
+                actually asked for. */}
+            {!settled && (
+              <div style={{ opacity, transition: 'opacity 120ms linear' }}>
+                <div style={{ position: 'relative', top: -j * sliceH, width: '100%', height: ROLL_CARD_H, padding: '12px 16px' }}>
+                  <CardBody file={file} isFront={false} />
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -616,7 +635,7 @@ function Cylinder({ files }) {
     <div ref={containerRef}>
       <Timeline files={files} frontIndex={frontIndex} onSelect={(i) => goToIndex(i, 1400)} />
 
-      <div style={{ position: 'relative', height: 460, marginTop: 36, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', height: ROLL_WRAP_H, marginTop: 36, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -637,6 +656,7 @@ function Cylinder({ files }) {
               radius={radius}
               eff={normalizeAngle(drumAngle + i * step)}
               isFront={settled && i === frontIndex}
+              settled={settled}
               onClick={i === frontIndex ? undefined : () => goToIndex(i)}
             />
           ))}
