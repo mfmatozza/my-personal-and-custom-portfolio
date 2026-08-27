@@ -22,13 +22,6 @@ import logoHacklab from './assets/logos/hacklab.png';
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 const GREEN = { dim: '#1f7a45', mid: '#3fd07a', bright: '#5cf49a', pale: '#d6ffe6' };
 
-// Cylinder carousel geometry (work-experience column only) — uniform card
-// size; the roll's radius is derived from card height and the item count so
-// N equal-size cards wrap the full 360deg with no gaps, like paper on a roll.
-const ROLL_CARD_W = 320;
-const ROLL_CARD_H = 236;
-const ROLL_WRAP_H = 460;
-
 const CMD = '$ cat status.txt';
 const OCCUPATION = "Econ & Computer Science @ Bocconi · SWE Intern @ VivaTicket";
 
@@ -363,36 +356,57 @@ function CardBody({ file, isFront }) {
   );
 }
 
-// A toilet-paper-roll drum: each experience is ONE flat sheet — not curved,
-// not sliced — sitting at its own baseAngle around the cylinder. With the
-// radius derived from card height + count (see Cylinder below), adjacent
-// sheets' edges land exactly on top of each other, so they touch at the
-// seams with no gap and, critically, no overlap: a flat plane can never
-// intersect its neighbor the way the old sliced/curved cards could. Every
-// sheet shows its full content — only its brightness (dimmer the further
-// it's turned from the camera) marks the front one out, so the roll reads
-// as a ring of actual experiences, not a blank drum with one legible page.
-function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
-  const eff = normalizeAngle(drumAngle + baseAngle);
+// Six experiences, six faces of an actual cube — not a metaphor for one, a
+// real static box: each face sits at a fixed 90deg orientation (front/back/
+// left/right/top/bottom) and only the whole box rotates. A flat face can
+// never overlap its neighbor the way a curved/sliced surface could, so this
+// is naturally overlap-proof at any rotation, dragged or not.
+const FACES = [
+  { key: 'front', normal: [0, 0, 1], staticTransform: '', targetRx: 0, targetRy: 0 },
+  { key: 'right', normal: [1, 0, 0], staticTransform: 'rotateY(90deg)', targetRx: 0, targetRy: -90 },
+  { key: 'back', normal: [0, 0, -1], staticTransform: 'rotateY(180deg)', targetRx: 0, targetRy: 180 },
+  { key: 'left', normal: [-1, 0, 0], staticTransform: 'rotateY(-90deg)', targetRx: 0, targetRy: 90 },
+  { key: 'top', normal: [0, 1, 0], staticTransform: 'rotateX(-90deg)', targetRx: 90, targetRy: 0 },
+  { key: 'bottom', normal: [0, -1, 0], staticTransform: 'rotateX(90deg)', targetRx: -90, targetRy: 0 },
+];
+
+// How much a face's normal points at the camera (+1 dead-on, 0 edge-on,
+// negative facing away) once the box is rotated by rx (pitch) then ry
+// (yaw) — matches the order CSS applies `rotateX(rx) rotateY(ry)`, i.e.
+// yaw first in local space, then pitch. Same value drives both which face
+// is "front" (the max) and how brightly lit each face looks.
+function faceDepth(rx, ry, normal) {
+  const [nx, ny, nz] = normal;
+  const b = (ry * Math.PI) / 180;
+  const a = (rx * Math.PI) / 180;
+  const x1 = nx * Math.cos(b) + nz * Math.sin(b);
+  const y1 = ny;
+  const z1 = -nx * Math.sin(b) + nz * Math.cos(b);
+  return y1 * Math.sin(a) + z1 * Math.cos(a);
+}
+
+function CubeFace({ file, face, size, rx, ry, isFront, onClick }) {
+  const half = size / 2;
+  const transform = `${face.staticTransform ? `${face.staticTransform} ` : ''}translateZ(${half}px)`;
+  const light = Math.max(0, faceDepth(rx, ry, face.normal));
 
   if (isFront) {
     return (
       <div
         onClick={onClick}
         style={{
-          position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
-          marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
-          transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
-          // Without this, a card rotated past 90deg (facing away from the
-          // camera, i.e. on the far side of the drum) still renders —
+          position: 'absolute', top: '50%', left: '50%', width: size, height: size,
+          marginLeft: -half, marginTop: -half, transform,
+          // Without this, a face rotated past 90deg (facing away from the
+          // camera, i.e. the far side of the box) still renders —
           // mirror-flipped — instead of disappearing.
           backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
           cursor: 'default',
         }}
       >
         <div style={{
-          width: '100%', height: '100%', overflow: 'hidden', clipPath: 'inset(0 round 8px)',
-          padding: '12px 16px', borderRadius: 8,
+          width: '100%', height: '100%', overflow: 'hidden', clipPath: 'inset(0 round 10px)',
+          padding: '14px 18px', borderRadius: 10,
           background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(9,13,12,.96) 68%)',
         }}>
           <CardBody file={file} isFront />
@@ -401,31 +415,41 @@ function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
     );
   }
 
-  const light = Math.max(0, Math.cos((eff * Math.PI) / 180));
-
   return (
     <div
       onClick={onClick}
       style={{
-        position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
-        marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
-        transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
+        position: 'absolute', top: '50%', left: '50%', width: size, height: size,
+        marginLeft: -half, marginTop: -half, transform,
         backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
         // overflow:hidden alone is unreliable here — Chromium doesn't
         // always clip content inside an element that's itself transformed
-        // in a preserve-3d context, so a card with more bullets than fit
-        // in ROLL_CARD_H could bleed straight through into its neighbor.
+        // in a preserve-3d context, so a face with more bullets than fit
+        // its height could bleed into whatever's rendered behind it.
         // clip-path is a hard, dependable clip regardless of that.
-        overflow: 'hidden', clipPath: 'inset(0 round 8px)',
-        cursor: 'pointer', borderRadius: 8,
+        overflow: 'hidden', clipPath: 'inset(0 round 10px)',
+        cursor: 'pointer', borderRadius: 10,
         background: `rgba(${Math.round(9 + 83 * light * 0.25)},${Math.round(13 + 231 * light * 0.25)},${Math.round(12 + 142 * light * 0.25)},.96)`,
       }}
     >
-      <div style={{ padding: '12px 16px', opacity: Math.max(0.3, light) }}>
+      <div style={{ padding: '14px 18px', opacity: Math.max(0.3, light) }}>
         <CardBody file={file} isFront={false} />
       </div>
     </div>
   );
+}
+
+// Cube side length, responsive to viewport width so it stays sensible from
+// phone to wide desktop, re-measured on resize.
+function useCubeSize() {
+  const compute = () => (typeof window === 'undefined' ? 280 : Math.max(210, Math.min(320, window.innerWidth * 0.22)));
+  const [size, setSize] = useState(compute);
+  useEffect(() => {
+    const onResize = () => setSize(compute());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return size;
 }
 
 // A quick-nav strip under the "$ ./work-experience" header: one marker per
@@ -469,95 +493,122 @@ function Timeline({ files, frontIndex, onSelect }) {
   );
 }
 
-// A roll of paper: N equal-size cards wrap the full 360deg of a small
-// cylinder (radius derived from card height + count, so they sit edge to
-// edge with no gaps, so a big card height also buys a big, clearly circular
-// radius for free). Dragging rotates it continuously, 1:1 with the mouse —
-// no discrete steps — and releasing carries real (friction-decayed) spin
-// momentum before settling onto the nearest card. Whichever card ends up
-// facing front gets the border/glow boost; every card always shows its
-// full content, so nothing has to expand/collapse out of sync with the spin.
-function Cylinder({ files }) {
-  const n = files.length;
-  const step = 360 / n;
-  const radius = ROLL_CARD_H / (2 * Math.tan(Math.PI / n));
-
-  const [drumAngle, setDrumAngle] = useState(0);
+// Free two-axis rotation: vertical drag pitches (rx), horizontal drag yaws
+// (ry), both continuously — a real trackball, not a single-axis roll.
+// Releasing above a flick threshold keeps spinning under simulated inertia
+// on both axes at once, decelerating to friction, then always settles onto
+// whichever of the 6 faces ends up most nearly facing the camera. Clicking
+// a timeline marker instead spins straight to that face's own fixed resting
+// orientation (rx/ry each a multiple of 90deg), by the shortest path on
+// each axis independently, so it never spins the long way round.
+function Cube({ files }) {
+  const size = useCubeSize();
+  const [rx, setRx] = useState(0);
+  const [ry, setRy] = useState(0);
   const [dragging, setDragging] = useState(false);
   // True for the whole duration of any spin (drag, momentum, or the eased
-  // settle) — while true, no card renders as the single flat "front" panel,
-  // so nothing pops between representations as the drum passes each card.
-  // That upgrade only happens once it's actually at rest.
+  // settle) — while true, no face renders as the single flat "front" panel,
+  // so nothing pops between representations as the box passes each face.
   const [animating, setAnimating] = useState(false);
-  const angleRef = useRef(0);
-  const dragRef = useRef({ startY: 0, startAngle: 0, lastY: 0, lastT: 0, velocity: 0 });
+  const rxRef = useRef(0);
+  const ryRef = useRef(0);
+  const dragRef = useRef({ startX: 0, startY: 0, startRx: 0, startRy: 0, lastT: 0, vRx: 0, vRy: 0 });
   const rafRef = useRef(null);
   const [containerRef, visible] = useVisible();
 
-  useEffect(() => { angleRef.current = drumAngle; }, [drumAngle]);
+  useEffect(() => { rxRef.current = rx; }, [rx]);
+  useEffect(() => { ryRef.current = ry; }, [ry]);
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
-  const settleTo = (target, duration = 480, fromOverride) => {
+  const settleTo = (targetRx, targetRy, duration = 480, fromOverride) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     // fromOverride: pass the just-computed position when chaining straight out
-    // of the momentum loop, since angleRef won't have caught up to it yet
-    // (it syncs from an effect that hasn't run for this frame).
-    const start = fromOverride != null ? fromOverride : angleRef.current;
-    const delta = target - start;
+    // of the momentum loop, since the refs won't have caught up to it yet
+    // (they sync from an effect that hasn't run for this frame).
+    const startRx = fromOverride ? fromOverride.rx : rxRef.current;
+    const startRy = fromOverride ? fromOverride.ry : ryRef.current;
+    const deltaRx = targetRx - startRx;
+    const deltaRy = targetRy - startRy;
     const t0 = performance.now();
     setAnimating(true);
-    const step2 = (now) => {
+    const step = (now) => {
       const t = Math.min(1, (now - t0) / duration);
-      setDrumAngle(start + delta * easeOutCubic(t));
+      const eased = easeOutCubic(t);
+      setRx(startRx + deltaRx * eased);
+      setRy(startRy + deltaRy * eased);
       if (t < 1) {
-        rafRef.current = requestAnimationFrame(step2);
+        rafRef.current = requestAnimationFrame(step);
       } else {
         rafRef.current = null;
         setAnimating(false);
       }
     };
-    rafRef.current = requestAnimationFrame(step2);
+    rafRef.current = requestAnimationFrame(step);
   };
 
-  // Read angleRef (not the closed-over `drumAngle` state) so these stay
-  // correct without needing to be redefined on every animation frame.
-  const go = (delta) => settleTo(Math.round(angleRef.current / step) * step + delta * step);
-  const goToIndex = (i, duration) => settleTo(nearestEquivalent(angleRef.current, -i * step), duration);
+  // Whichever face's normal currently points most toward the camera —
+  // recomputed every render straight from the live rx/ry, so it's correct
+  // mid-drag and mid-spin too, not just once settled.
+  const frontFaceAt = (testRx, testRy) => {
+    let bi = 0, bd = -Infinity;
+    FACES.forEach((f, i) => {
+      const d = faceDepth(testRx, testRy, f.normal);
+      if (d > bd) { bd = d; bi = i; }
+    });
+    return bi;
+  };
+  const frontIndex = frontFaceAt(rx, ry);
+
+  const settleToNearestFace = (fromOverride) => {
+    const testRx = fromOverride ? fromOverride.rx : rxRef.current;
+    const testRy = fromOverride ? fromOverride.ry : ryRef.current;
+    const target = FACES[frontFaceAt(testRx, testRy)];
+    settleTo(nearestEquivalent(testRx, target.targetRx), nearestEquivalent(testRy, target.targetRy), 420, fromOverride);
+  };
+
+  const goToFace = (i, duration = 1400) => {
+    const target = FACES[i];
+    settleTo(nearestEquivalent(rxRef.current, target.targetRx), nearestEquivalent(ryRef.current, target.targetRy), duration);
+  };
 
   useEffect(() => {
     if (!visible) return undefined;
+    const round90 = (a) => Math.round(a / 90) * 90;
     const onKey = (e) => {
-      if (e.key === 'ArrowUp') { e.preventDefault(); go(-1); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); settleTo(nearestEquivalent(rxRef.current, round90(rxRef.current) - 90), ryRef.current, 420); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); settleTo(nearestEquivalent(rxRef.current, round90(rxRef.current) + 90), ryRef.current, 420); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); settleTo(rxRef.current, nearestEquivalent(ryRef.current, round90(ryRef.current) - 90), 420); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); settleTo(rxRef.current, nearestEquivalent(ryRef.current, round90(ryRef.current) + 90), 420); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, n, step]);
+  }, [visible]);
 
-  // Real spin: released above a flick threshold, the drum keeps turning
-  // under its own (simulated) inertia, losing speed to exponential
-  // friction each frame, and only snaps to the nearest card once it's
+  // Real spin on both axes: released above a flick threshold, the box keeps
+  // turning under its own (simulated) inertia, losing speed to exponential
+  // friction each frame, and only snaps to the nearest face once it's
   // slowed down enough — a proper decelerating spin, not a short ease.
-  const spinWithMomentum = (initialVelocity) => {
+  const spinWithMomentum = (initialVRx, initialVRy) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     setAnimating(true);
     const FRICTION_PER_MS = 0.0018; // ~385ms half-life
-    const MIN_VELOCITY = 0.006; // deg/ms — below this, hand off to the settle ease
-    let v = initialVelocity;
-    let pos = angleRef.current;
+    const MIN_SPEED = 0.008; // deg/ms combined — below this, hand off to the settle ease
+    let vRx = initialVRx, vRy = initialVRy;
+    let px = rxRef.current, py = ryRef.current;
     let lastT = performance.now();
     const frame = (now) => {
       const dt = now - lastT;
       lastT = now;
-      v *= Math.exp(-FRICTION_PER_MS * dt);
-      pos += v * dt;
-      setDrumAngle(pos);
-      if (Math.abs(v) > MIN_VELOCITY) {
+      const decay = Math.exp(-FRICTION_PER_MS * dt);
+      vRx *= decay; vRy *= decay;
+      px += vRx * dt; py += vRy * dt;
+      setRx(px); setRy(py);
+      if (Math.hypot(vRx, vRy) > MIN_SPEED) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
         rafRef.current = null;
-        settleTo(Math.round(pos / step) * step, 380, pos);
+        settleToNearestFace({ rx: px, ry: py });
       }
     };
     rafRef.current = requestAnimationFrame(frame);
@@ -566,70 +617,70 @@ function Cylinder({ files }) {
   const onPointerDown = (e) => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     setDragging(true);
-    dragRef.current = { startY: e.clientY, startAngle: angleRef.current, lastY: e.clientY, lastT: performance.now(), velocity: 0 };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startRx: rxRef.current, startRy: ryRef.current, lastT: performance.now(), vRx: 0, vRy: 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
     if (!dragging) return;
     const now = performance.now();
-    const newAngle = dragRef.current.startAngle + (e.clientY - dragRef.current.startY) * 0.6;
+    const SENS = 0.4;
+    const newRx = dragRef.current.startRx - (e.clientY - dragRef.current.startY) * SENS;
+    const newRy = dragRef.current.startRy + (e.clientX - dragRef.current.startX) * SENS;
     const dt = now - dragRef.current.lastT;
     if (dt > 0) {
-      const instV = (newAngle - angleRef.current) / dt;
+      const instVRx = (newRx - rxRef.current) / dt;
+      const instVRy = (newRy - ryRef.current) / dt;
       // Low-pass the velocity sample so one noisy last-pixel move before
       // release doesn't dictate the whole spin.
-      dragRef.current.velocity = dragRef.current.velocity * 0.7 + instV * 0.3;
+      dragRef.current.vRx = dragRef.current.vRx * 0.7 + instVRx * 0.3;
+      dragRef.current.vRy = dragRef.current.vRy * 0.7 + instVRy * 0.3;
     }
     dragRef.current.lastT = now;
-    setDrumAngle(newAngle);
+    setRx(newRx);
+    setRy(newRy);
   };
   const endDrag = () => {
     if (!dragging) return;
     setDragging(false);
-    const v = dragRef.current.velocity;
-    if (Math.abs(v) > 0.05) {
-      spinWithMomentum(v);
+    const { vRx, vRy } = dragRef.current;
+    if (Math.hypot(vRx, vRy) > 0.04) {
+      spinWithMomentum(vRx, vRy);
     } else {
-      settleTo(Math.round(angleRef.current / step) * step, 400);
+      settleToNearestFace();
     }
   };
 
-  let frontIndex = 0, frontDist = Infinity;
-  files.forEach((f, i) => {
-    const d = Math.abs(normalizeAngle(drumAngle + i * step));
-    if (d < frontDist) { frontDist = d; frontIndex = i; }
-  });
-
-  // The flat, fully-legible "front" treatment only kicks in once the drum
-  // has actually stopped — mid-spin every card renders as the uniform
-  // curved slices, so nothing snaps between representations as it passes.
+  // The flat, fully-legible "front" treatment only kicks in once the box
+  // has actually stopped — mid-spin every face renders at its natural
+  // brightness, so nothing snaps between representations as it passes.
   const settled = !dragging && !animating;
 
   return (
     <div ref={containerRef}>
-      <Timeline files={files} frontIndex={frontIndex} onSelect={(i) => goToIndex(i, 1400)} />
+      <Timeline files={files} frontIndex={frontIndex} onSelect={(i) => goToFace(i, 1400)} />
 
-      <div style={{ position: 'relative', height: ROLL_WRAP_H, marginTop: 36, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', height: size * 1.9, marginTop: 36, perspective: 760, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           style={{
-            position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
-            transform: `rotateX(${drumAngle}deg)`,
+            position: 'relative', width: size, height: size, transformStyle: 'preserve-3d',
+            transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
             touchAction: 'none', cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none',
           }}
         >
-          {files.map((f, i) => (
-            <RollCard
-              key={f.key}
-              file={f}
-              baseAngle={i * step}
-              radius={radius}
-              drumAngle={drumAngle}
+          {FACES.map((face, i) => (
+            <CubeFace
+              key={face.key}
+              file={files[i]}
+              face={face}
+              size={size}
+              rx={rx}
+              ry={ry}
               isFront={settled && i === frontIndex}
-              onClick={i === frontIndex ? undefined : () => goToIndex(i)}
+              onClick={i === frontIndex ? undefined : () => goToFace(i)}
             />
           ))}
         </div>
@@ -702,7 +753,7 @@ export default function Status() {
         transition: 'opacity 500ms ease-out, transform 500ms ease-out',
       }}>
         <Column title="$ ./work-experience" accent>
-          <Cylinder files={EXPERIENCE} />
+          <Cube files={EXPERIENCE} />
         </Column>
       </div>
     </section>
