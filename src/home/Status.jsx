@@ -449,6 +449,47 @@ function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
   );
 }
 
+// A quick-nav strip under the "$ ./work-experience" header: one marker per
+// role, in the same order as the roll. Clicking a marker spins the drum to
+// bring that role to front — deliberately slower than the roll's own
+// click-a-neighbor nudge, so the spin itself is visible, not a snap.
+function Timeline({ files, frontIndex, onSelect }) {
+  return (
+    <div style={{ position: 'relative', margin: '20px 4px 6px' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 5, height: 1, background: 'rgba(92,244,154,.18)' }} />
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
+        {files.map((f, i) => {
+          const active = i === frontIndex;
+          return (
+            <button
+              key={f.key}
+              onClick={() => onSelect(i)}
+              style={{
+                all: 'unset', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                cursor: 'pointer', flex: '0 0 auto',
+              }}
+            >
+              <span style={{
+                width: active ? 11 : 7, height: active ? 11 : 7, borderRadius: '50%',
+                background: active ? GREEN.bright : 'rgba(92,244,154,.4)',
+                boxShadow: active ? `0 0 10px ${GREEN.bright}` : 'none',
+                transition: 'width 200ms ease, height 200ms ease, background 200ms ease, box-shadow 200ms ease',
+              }} />
+              <span style={{
+                fontFamily: MONO, fontSize: 10.5, whiteSpace: 'nowrap',
+                color: active ? GREEN.pale : GREEN.dim,
+                transition: 'color 200ms ease',
+              }}>
+                {f.period.split(' - ')[0].trim()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // A roll of paper: N equal-size cards wrap the full 360deg of a small
 // cylinder (radius derived from card height + count, so they sit edge to
 // edge with no gaps, so a big card height also buys a big, clearly circular
@@ -491,7 +532,7 @@ function Cylinder({ files }) {
   // Read angleRef (not the closed-over `drumAngle` state) so these stay
   // correct without needing to be redefined on every animation frame.
   const go = (delta) => settleTo(Math.round(angleRef.current / step) * step + delta * step);
-  const goToIndex = (i) => settleTo(nearestEquivalent(angleRef.current, -i * step));
+  const goToIndex = (i, duration) => settleTo(nearestEquivalent(angleRef.current, -i * step), duration);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -570,6 +611,8 @@ function Cylinder({ files }) {
 
   return (
     <div ref={containerRef}>
+      <Timeline files={files} frontIndex={frontIndex} onSelect={(i) => goToIndex(i, 1400)} />
+
       <div style={{ position: 'relative', height: 460, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <button onClick={() => go(-1)} aria-label="Previous experience" style={arrowButtonStyle(false, 'top')}>▲</button>
 
