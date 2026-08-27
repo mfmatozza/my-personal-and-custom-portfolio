@@ -319,7 +319,7 @@ const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 function CardBody({ file, isFront }) {
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         {file.logo && (
           <div style={{
             width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
@@ -330,8 +330,8 @@ function CardBody({ file, isFront }) {
           </div>
         )}
         <span style={{
-          fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
-          color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500, lineHeight: 1.3,
+          color: isFront ? GREEN.bright : GREEN.mid, flex: '1 1 auto', minWidth: 0,
         }}>
           {file.org}
         </span>
