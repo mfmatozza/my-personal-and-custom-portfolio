@@ -336,68 +336,113 @@ function nearestEquivalent(current, desiredMod360) {
 
 const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 
-// Every card carries its full content at all times (org, period, location,
-// role, bullets, badges, links) — uniform size, uniform animation. Only
-// opacity and the border/glow distinguish the front-facing one; nothing
-// expands or collapses, so there's nothing to desync from the spin.
-function RollCard({ file, baseAngle, radius, eff, isFront, onClick }) {
-  const opacity = Math.max(0.12, 1 - Math.abs(eff) / 210);
+function CardBody({ file, isFront }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
-        marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
-        transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
-        cursor: isFront ? 'default' : 'pointer',
-      }}
-    >
-      <div style={{
-        width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px',
-        opacity,
-        background: isFront ? 'rgba(11,16,14,.96)' : 'rgba(11,16,14,.72)',
-        border: `1px solid rgba(92,244,154,${isFront ? 0.6 : 0.16})`,
-        borderRadius: 8,
-        boxShadow: isFront ? '0 0 26px rgba(92,244,154,.32), 0 14px 30px rgba(0,0,0,.55)' : 'none',
-        transition: 'opacity 120ms linear, border-color 200ms ease, box-shadow 200ms ease, background 200ms ease',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {file.logo && (
-            <div style={{
-              width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isFront ? 0.5 : 0.18})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-              transition: 'border-color 200ms ease',
-            }}>
-              <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
-            </div>
-          )}
-          <span style={{
-            fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
-            color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            transition: 'color 200ms ease',
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {file.logo && (
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(0,0,0,.4)', border: `1px solid rgba(92,244,154,${isFront ? 0.5 : 0.18})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
           }}>
-            {file.org}
-          </span>
-          <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {file.period}
-          </span>
-        </div>
-
-        {file.location && <Meta>{file.location}</Meta>}
-        {file.roles.map((r, i) => (
-          <div key={r.title} style={{ marginTop: i === 0 ? 8 : 12 }}>
-            <div style={{ fontFamily: MONO, color: isFront ? GREEN.pale : GREEN.mid, fontSize: 12.5, transition: 'color 200ms ease' }}>
-              {r.title}
-            </div>
-            {r.period && <Meta>{r.period}</Meta>}
-            {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={11} />)}
-            {r.badges && <Badges badges={r.badges} badgesIn={isFront} />}
-            {r.links && <Links links={r.links} />}
+            <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
           </div>
-        ))}
+        )}
+        <span style={{
+          fontFamily: MONO, fontSize: 13.5, fontWeight: isFront ? 600 : 500,
+          color: isFront ? GREEN.bright : GREEN.mid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {file.org}
+        </span>
+        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, color: GREEN.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {file.period}
+        </span>
       </div>
-    </div>
+
+      {file.location && <Meta>{file.location}</Meta>}
+      {file.roles.map((r, i) => (
+        <div key={r.title} style={{ marginTop: i === 0 ? 8 : 12 }}>
+          <div style={{ fontFamily: MONO, color: isFront ? GREEN.pale : GREEN.mid, fontSize: 12.5 }}>
+            {r.title}
+          </div>
+          {r.period && <Meta>{r.period}</Meta>}
+          {r.bullets.map((b, bi) => <Bullet key={bi} text={b} size={11} />)}
+          {r.badges && <Badges badges={r.badges} badgesIn={isFront} />}
+          {r.links && <Links links={r.links} />}
+        </div>
+      ))}
+    </>
+  );
+}
+
+// Cards are cheap flat rectangles, so one per 60deg step reads as a hexagon,
+// not a cylinder — the front card stays a single crisp flat panel (it needs
+// to be perfectly legible), but every OTHER card is built from SUB_SLICES
+// thin horizontal strips, each independently rotated across the card's own
+// angular span and windowed (via a shared, vertically-shifted content
+// block) onto the right band of that card's text. More, thinner facets
+// approximate the true curve closely enough that the roll's sides visibly
+// warp around instead of looking like flat panels stacked on a hinge.
+const SUB_SLICES = 5;
+
+function RollCard({ file, baseAngle, step, radius, eff, isFront, onClick }) {
+  if (isFront) {
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: ROLL_CARD_H,
+          marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
+          transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
+          cursor: 'default',
+        }}
+      >
+        <div style={{
+          width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px',
+          background: 'rgba(11,16,14,.96)', border: '1px solid rgba(92,244,154,.6)', borderRadius: 8,
+          boxShadow: '0 0 26px rgba(92,244,154,.32), 0 14px 30px rgba(0,0,0,.55)',
+        }}>
+          <CardBody file={file} isFront />
+        </div>
+      </div>
+    );
+  }
+
+  const opacity = Math.max(0.12, 1 - Math.abs(eff) / 210);
+  const sliceH = ROLL_CARD_H / SUB_SLICES;
+
+  return (
+    <>
+      {Array.from({ length: SUB_SLICES }).map((_, j) => {
+        const subAngle = baseAngle - step / 2 + (step * (j + 0.5)) / SUB_SLICES;
+        const isTop = j === 0;
+        const isBottom = j === SUB_SLICES - 1;
+        return (
+          <div
+            key={j}
+            onClick={onClick}
+            style={{
+              position: 'absolute', top: '50%', left: '50%', width: ROLL_CARD_W, height: sliceH,
+              marginLeft: -ROLL_CARD_W / 2, marginTop: -sliceH / 2,
+              transform: `rotateX(${subAngle}deg) translateZ(${radius}px)`,
+              overflow: 'hidden', cursor: 'pointer',
+              opacity, transition: 'opacity 120ms linear',
+              background: 'rgba(11,16,14,.72)',
+              borderLeft: '1px solid rgba(92,244,154,.16)', borderRight: '1px solid rgba(92,244,154,.16)',
+              borderTop: isTop ? '1px solid rgba(92,244,154,.16)' : 'none',
+              borderBottom: isBottom ? '1px solid rgba(92,244,154,.16)' : 'none',
+              borderTopLeftRadius: isTop ? 8 : 0, borderTopRightRadius: isTop ? 8 : 0,
+              borderBottomLeftRadius: isBottom ? 8 : 0, borderBottomRightRadius: isBottom ? 8 : 0,
+            }}
+          >
+            <div style={{ position: 'relative', top: -j * sliceH, width: '100%', height: ROLL_CARD_H, padding: '12px 16px' }}>
+              <CardBody file={file} isFront={false} />
+            </div>
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -541,6 +586,7 @@ function Cylinder({ files }) {
               key={f.key}
               file={f}
               baseAngle={i * step}
+              step={step}
               radius={radius}
               eff={normalizeAngle(drumAngle + i * step)}
               isFront={i === frontIndex}
