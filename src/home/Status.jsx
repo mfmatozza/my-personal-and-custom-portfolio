@@ -368,10 +368,10 @@ function CardBody({ file, isFront }) {
 // radius derived from card height + count (see Cylinder below), adjacent
 // sheets' edges land exactly on top of each other, so they touch at the
 // seams with no gap and, critically, no overlap: a flat plane can never
-// intersect its neighbor the way the old sliced/curved cards could. The
-// front sheet gets the full, fully-legible treatment; every other sheet
-// still shows its own identity (logo + org), dimmed by how far it's turned
-// from the camera, so the roll reads as distinct pages, not a blank drum.
+// intersect its neighbor the way the old sliced/curved cards could. Every
+// sheet shows its full content — only its brightness (dimmer the further
+// it's turned from the camera) marks the front one out, so the roll reads
+// as a ring of actual experiences, not a blank drum with one legible page.
 function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
   const eff = normalizeAngle(drumAngle + baseAngle);
 
@@ -391,7 +391,8 @@ function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
         }}
       >
         <div style={{
-          width: '100%', height: '100%', overflow: 'hidden', padding: '12px 16px', borderRadius: 8,
+          width: '100%', height: '100%', overflow: 'hidden', clipPath: 'inset(0 round 8px)',
+          padding: '12px 16px', borderRadius: 8,
           background: 'radial-gradient(130% 110% at 50% 35%, rgba(92,244,154,.13), rgba(9,13,12,.96) 68%)',
         }}>
           <CardBody file={file} isFront />
@@ -410,31 +411,18 @@ function RollCard({ file, baseAngle, radius, drumAngle, isFront, onClick }) {
         marginLeft: -ROLL_CARD_W / 2, marginTop: -ROLL_CARD_H / 2,
         transform: `rotateX(${baseAngle}deg) translateZ(${radius}px)`,
         backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-        overflow: 'hidden', cursor: 'pointer', borderRadius: 8,
+        // overflow:hidden alone is unreliable here — Chromium doesn't
+        // always clip content inside an element that's itself transformed
+        // in a preserve-3d context, so a card with more bullets than fit
+        // in ROLL_CARD_H could bleed straight through into its neighbor.
+        // clip-path is a hard, dependable clip regardless of that.
+        overflow: 'hidden', clipPath: 'inset(0 round 8px)',
+        cursor: 'pointer', borderRadius: 8,
         background: `rgba(${Math.round(9 + 83 * light * 0.25)},${Math.round(13 + 231 * light * 0.25)},${Math.round(12 + 142 * light * 0.25)},.96)`,
       }}
     >
-      <div style={{ padding: '12px 16px', opacity: Math.max(0.28, light) }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {file.logo && (
-            <div style={{
-              width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(0,0,0,.4)', border: '1px solid rgba(92,244,154,.22)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-            }}>
-              <img src={file.logo} alt="" style={{ width: '62%', height: '62%', objectFit: 'contain' }} />
-            </div>
-          )}
-          <span style={{
-            fontFamily: MONO, fontSize: 13, fontWeight: 500, color: GREEN.mid,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {file.org}
-          </span>
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 10, color: GREEN.dim, marginTop: 6 }}>
-          {file.period}
-        </div>
+      <div style={{ padding: '12px 16px', opacity: Math.max(0.3, light) }}>
+        <CardBody file={file} isFront={false} />
       </div>
     </div>
   );
