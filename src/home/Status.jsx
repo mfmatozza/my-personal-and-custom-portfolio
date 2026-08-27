@@ -341,7 +341,7 @@ const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 // opacity and the border/glow distinguish the front-facing one; nothing
 // expands or collapses, so there's nothing to desync from the spin.
 function RollCard({ file, baseAngle, radius, eff, isFront, onClick }) {
-  const opacity = Math.max(0.14, 1 - Math.abs(eff) / 150);
+  const opacity = Math.max(0.12, 1 - Math.abs(eff) / 210);
   return (
     <div
       onClick={onClick}
@@ -522,7 +522,7 @@ function Cylinder({ files }) {
 
   return (
     <div ref={containerRef}>
-      <div style={{ position: 'relative', height: 420, perspective: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', height: 460, perspective: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <button onClick={() => go(-1)} aria-label="Previous experience" style={arrowButtonStyle(false, 'top')}>▲</button>
 
         <div
